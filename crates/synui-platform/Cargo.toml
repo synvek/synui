@@ -1,0 +1,29 @@
+[package]
+name = "synui-platform"
+description = "Platform abstraction and lifecycle hooks for SynUI"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+thiserror = { workspace = true }
+tracing = { workspace = true }
+synui-core = { workspace = true }
+wasm-bindgen = { version = "0.2", optional = true }
+web-sys = { version = "0.3", optional = true, features = [
+    "Window",
+    "Document",
+    "Element",
+    "HtmlElement",
+    "Node",
+    "EventTarget",
+    "MouseEvent",
+] }
+
+[features]
+default = ["desktop"]
+desktop = []
+android = []
+ios = []
+web = ["dep:wasm-bindgen", "dep:web-sys"]

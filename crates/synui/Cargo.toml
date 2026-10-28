@@ -1,0 +1,37 @@
+[package]
+name = "synui"
+description = "SynUI cross-platform GUI framework"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+synui-core = { workspace = true }
+synui-layout = { workspace = true }
+synui-render = { workspace = true }
+synui-theme = { workspace = true }
+synui-i18n = { workspace = true }
+synui-a11y = { workspace = true }
+synui-winit = { workspace = true }
+synui-widgets = { workspace = true }
+winit = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+[features]
+default = []
+# hot_reload / plugins (View-based) were removed with the v0.3 legacy cut (Phase 51).
+
+[dev-dependencies]
+proptest = "=1.6.0"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2"
+web-sys = { version = "0.3", features = [
+    "Window",
+    "History",
+    "Location",
+    "Event",
+    "EventTarget",
+] }

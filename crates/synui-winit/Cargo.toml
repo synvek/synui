@@ -1,0 +1,53 @@
+[package]
+name = "synui-winit"
+description = "Winit platform integration for SynUI"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+synui-core = { workspace = true }
+synui-layout = { workspace = true }
+synui-render = { workspace = true }
+synui-theme = { workspace = true }
+synui-i18n = { workspace = true }
+synui-a11y = { workspace = true }
+synui-widgets = { workspace = true }
+synui-platform = { workspace = true }
+winit = { workspace = true }
+vello = { workspace = true }
+pollster = { workspace = true }
+accesskit_winit = { workspace = true }
+accesskit = { workspace = true }
+tracing = { workspace = true }
+thiserror = { workspace = true }
+
+# Desktop shell (muda/rfd/tray) — not available on mobile/wasm.
+[target.'cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))'.dependencies]
+muda = "0.17"
+rfd = "0.15"
+raw-window-handle = "0.6"
+tray-icon = "0.21"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+web-sys = { version = "0.3", features = [
+    "Window",
+    "Document",
+    "Element",
+    "HtmlElement",
+    "HtmlCanvasElement",
+    "CssStyleDeclaration",
+    "console",
+] }
+wasm-bindgen = "0.2"
+web-time = "1.1"
+
+[features]
+default = ["desktop"]
+desktop = ["synui-platform/desktop"]
+mobile = ["synui-platform/android", "synui-platform/ios"]
+web = ["synui-platform/web"]
+# Enable when linking Android NDK builds (cargo-apk).
+android-native-activity = ["winit/android-native-activity"]
+android-game-activity = ["winit/android-game-activity"]

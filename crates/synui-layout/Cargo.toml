@@ -1,0 +1,16 @@
+[package]
+name = "synui-layout"
+description = "Taffy-based layout engine for SynUI"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[features]
+default = []
+## Debug: after incremental compute, assert bounds match a full Taffy rebuild.
+layout_parity = []
+
+[dependencies]
+synui-core = { workspace = true }
+taffy = { workspace = true }

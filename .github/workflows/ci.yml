@@ -1,0 +1,209 @@
+name: CI
+
+on:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.88
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
+      - name: Configure MSVC tools for native ABI smoke
+        if: matrix.os == 'windows-latest'
+        uses: ilammy/msvc-dev-cmd@v1
+      - name: C/C++ ABI smoke and export gate
+        run: cargo test -p synui-abi --test native_abi -- --nocapture
+      - name: cargo fmt
+        run: cargo fmt --all -- --check
+      - name: cargo check
+        run: cargo check --workspace --all-targets
+      - name: cargo check wasm32 (web_hello)
+        run: |
+          rustup target add wasm32-unknown-unknown
+          cargo check -p web_hello --target wasm32-unknown-unknown --features web
+      - name: build web_hello wasm package
+        if: matrix.os == 'ubuntu-latest'
+        run: ./examples/web_hello/build-web.sh
+      - name: cargo check mobile_hello android target
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          rustup target add aarch64-linux-android
+          cargo check -p mobile_hello --target aarch64-linux-android --features mobile
+      - name: cargo check mobile_hello ios targets
+        if: matrix.os == 'macos-latest'
+        run: |
+          rustup target add aarch64-apple-ios aarch64-apple-ios-sim
+          cargo check -p mobile_hello --target aarch64-apple-ios --features mobile
+          cargo check -p mobile_hello --target aarch64-apple-ios-sim --features mobile
+      - name: wasm size gate
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          WASM=examples/web_hello/www/pkg/web_hello_bg.wasm
+          test -f "$WASM"
+          SIZE=$(wc -c < "$WASM" | tr -d ' ')
+          echo "web_hello_bg.wasm bytes=$SIZE"
+          # Phase 13 budget: full Application/Vello wasm (hybrid off on wasm32).
+          MAX=15000000
+          test "$SIZE" -le "$MAX"
+      - name: web_hello Playwright E2E
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          cd examples/web_hello/e2e
+          npm install
+          npx playwright install --with-deps chromium
+          npm test -- --retries=1
+        env:
+          CI: true
+      - name: cargo clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+      - name: duplicate dependency check
+        run: |
+          cargo tree -d -e normal -i peniko 2>/dev/null | tee peniko-dup.txt || true
+          cargo tree -d -e normal -i kurbo 2>/dev/null | tee kurbo-dup.txt || true
+          ! rg -q "peniko v0\.[0-5]\." peniko-dup.txt
+          ! rg -q "kurbo v0\.(10|11)\." kurbo-dup.txt
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.88
+      - uses: Swatinem/rust-cache@v2
+      - name: cargo test
+        run: cargo test --workspace
+        env:
+          INSTA_UPDATE: no
+
+  validation-matrix:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.88
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: Swatinem/rust-cache@v2
+      - name: Configure MSVC tools for native ABI smoke
+        if: matrix.os == 'windows-latest'
+        uses: ilammy/msvc-dev-cmd@v1
+      - name: Check migration manifest (manifest boundary only)
+        continue-on-error: true
+        run: python scripts/migration_manifest.py --check
+      - name: Install ABI-only Python SDK (independent boundary)
+        if: always()
+        run: python -m pip install ./sdk/python
+      - name: Build Production ABI library (independent boundary)
+        if: always()
+        run: cargo build -p synui-abi
+      - name: Native ABI smoke (independent boundary)
+        if: always()
+        run: cargo test -p synui-abi --test native_abi -- --nocapture
+      - name: Python SDK fixtures (independent boundary)
+        if: always()
+        run: python scripts/validation_matrix.py --only python-sdk --report target/validation-matrix/python-sdk.json
+      - name: Run complete Linux migration Matrix
+        if: always() && matrix.os == 'ubuntu-latest'
+        run: python scripts/validation_matrix.py --only facade-compilation,component-interaction,virtual-data,rich-text-style,headless-render,a11y,platform --report target/validation-matrix/component-api-example-migration.json
+      - name: Run declared desktop/a11y/platform workloads
+        if: always() && matrix.os != 'ubuntu-latest'
+        run: python scripts/validation_matrix.py --only facade-compilation,component-interaction,a11y,platform --report target/validation-matrix/component-api-example-migration.json
+      - name: Check migration gate and generate final report
+        if: always() && matrix.os == 'ubuntu-latest'
+        run: python scripts/migration_gate.py --check --matrix target/validation-matrix/component-api-example-migration.json --report target/migration-gate/report.json
+      - name: Legacy-free facade check (Phase 49 Wave H3)
+        if: always() && matrix.os == 'ubuntu-latest'
+        run: python scripts/migration_gate.py --legacy-free-check
+      - name: Facade regression gate (Phase 50 Wave I0)
+        if: always() && matrix.os == 'ubuntu-latest'
+        run: python scripts/migration_gate.py --facade-regression
+      - name: Upload migration Matrix, gate report, and finding history
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: migration-evidence-${{ matrix.os }}
+          if-no-files-found: ignore
+          path: |
+            target/validation-matrix/component-api-example-migration.json
+            target/migration-gate/report.json
+            target/migration-gate/finding-history.json
+            target/migration-gate/legacy-free-check.json
+            target/migration-gate/facade-regression.json
+
+
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.88
+      - uses: Swatinem/rust-cache@v2
+      - name: Build facade Counter size artifact
+        run: cargo build --release -p counter
+      - name: Run comparable v1 benchmark regression gate
+        run: cargo run --release -p synui-bench --bin bench_gate -- --machine-class github-ubuntu-x64-rust-1.88-release --binary target/release/counter
+
+  examples:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.88
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: Swatinem/rust-cache@v2
+      - name: build examples
+        run: |
+          cargo build -p counter
+          cargo build -p todo_list
+          cargo build -p navigation_demo
+          cargo build -p multi_window_demo
+          cargo build -p hello_triangle
+          cargo build -p show_image
+          cargo build -p widget_gallery_facade
+      - name: Run Linux migration Matrix workloads
+        if: matrix.os == 'ubuntu-latest'
+        run: python scripts/validation_matrix.py --only facade-compilation,component-interaction,virtual-data,rich-text-style,headless-render,a11y,platform --report target/validation-matrix/platform.json
+      - name: Run desktop/a11y/platform workloads on Windows and macOS
+        if: matrix.os != 'ubuntu-latest'
+        run: python scripts/validation_matrix.py --only facade-compilation,component-interaction,a11y,platform --report target/validation-matrix/platform.json
+      - name: Upload platform Validation Matrix report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: validation-matrix-${{ matrix.os }}
+          path: target/validation-matrix/platform.json
+
+  doc:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.88
+      - uses: Swatinem/rust-cache@v2
+      - name: cargo doc
+        run: cargo doc --workspace --no-deps

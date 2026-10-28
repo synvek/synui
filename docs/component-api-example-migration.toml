@@ -1,0 +1,1075 @@
+schema_version = 1
+manifest = "component-api-example-migration"
+workspace_manifest = "Cargo.toml"
+documentation = ["docs/api-reference-v0.2.md", "docs/migration-v0.2.md"]
+allowed_classifications = ["migrated", "needs_migration", "retained_engine", "non_production", "deferred"]
+allowed_platforms = ["desktop", "web", "android", "ios"]
+allowed_workloads = ["facade-compilation", "component-interaction", "virtual-data", "rich-text-style", "headless-render", "a11y", "platform", "native-abi", "python-sdk", "plugin-experimental"]
+denylist_symbols = ["WidgetStore", "ViewEngine", "Engine layout/render types", "numeric action identifiers", "global key/memo/section scheduling", "plugin registry/loading symbols", "JSON View creation symbols"]
+
+# The allowlist is deliberately application-facing. A record marked
+# external_element/advanced_integration/deferred is not a Prelude promise.
+[[components]]
+id = "text"
+canonical_path = "synui::view::Node::text"
+type_name = "Node"
+prelude = true
+stability = "stable"
+source_paths = ["crates/synui/src/view.rs"]
+ownership = "AppContext owns the mounted Element tree; text has no external mutable resource."
+thread_rule = "Build, update, and unmount on the owning App UI thread."
+lifecycle = "Node composition resolves identity at mount, updates from the next Node snapshot, and unmounts with its parent."
+error_contract = "ElementError is returned by validation/mount; missing text is rejected before Engine access."
+identity_policy = "Automatic positional identity; use BusinessKey only for repeated sibling text nodes."
+event_model = "Text is non-interactive and declares no event slot."
+a11y_metadata = "Optional Accessibility role/name/value metadata is carried by the Element contract."
+replacement = "No replacement; use synui::view::Node::text."
+fixture_commands = ["cargo test -p synui --test counter_prelude_fixture"]
+validation_workloads = ["facade-compilation", "headless-render", "a11y"]
+boundary_note = "Stable application-level text construction; retained Engine text widgets remain internal."
+
+[[components]]
+id = "container-row-column"
+canonical_path = "synui::view::Node::container"
+type_name = "Node"
+prelude = true
+stability = "stable"
+source_paths = ["crates/synui/src/view.rs"]
+ownership = "AppContext owns the composed child Elements and their retained lifecycle."
+thread_rule = "Build and lifecycle operations run on the owning App UI thread."
+lifecycle = "Children mount/update/unmount as a subtree; omitted children are released by the Element lifecycle."
+error_contract = "ElementError reports duplicate BusinessKey, invalid child metadata, or mount failures."
+identity_policy = "Automatic child-slot identity; repeated dynamic children use BusinessKey rather than numeric keys."
+event_model = "Container forwards child event routing; it does not expose WidgetStore."
+a11y_metadata = "Accessibility metadata may describe the container and logical descendants."
+replacement = "No replacement; use synui::view::Node::container and Node::row/column composition."
+fixture_commands = ["cargo test -p synui --test counter_prelude_fixture"]
+validation_workloads = ["facade-compilation", "component-interaction", "headless-render", "a11y"]
+boundary_note = "Stable Node/Element composition; Engine layout and render types remain private."
+
+[[components]]
+id = "button"
+canonical_path = "synui::widgets::Button"
+type_name = "Button"
+prelude = true
+stability = "stable"
+source_paths = ["crates/synui/src/widgets.rs"]
+ownership = "The mounted Button borrows or registers a typed Action owned by AppContext."
+thread_rule = "Press dispatch and state mutation are UI-thread gated by AppContext."
+lifecycle = "Button mounts as an Element, updates its label/handler, and unregisters generated handlers on unmount."
+error_contract = "Button press returns AppError through the typed Action path; ElementError covers mount failures."
+identity_policy = "Automatic identity; repeated buttons use a stable BusinessKey."
+event_model = "Event::Press with typed Action<()> or an App/EventContext closure; no numeric action id."
+a11y_metadata = "Button maps to role=button and supports semantic click/focus actions."
+replacement = "No replacement; use synui::widgets::Button."
+fixture_commands = ["cargo test -p synui --test counter_prelude_fixture"]
+validation_workloads = ["facade-compilation", "component-interaction", "headless-render", "a11y"]
+boundary_note = "Stable facade Button; WidgetStore and ViewEngine are not part of the contract."
+
+[[components]]
+id = "text-input"
+canonical_path = "synui::widgets::TextInput"
+type_name = "TextInput"
+prelude = true
+stability = "stable"
+source_paths = ["crates/synui/src/widgets.rs"]
+ownership = "Controlled values and typed change Actions are AppContext-owned; uncontrolled values are native-owned after mount."
+thread_rule = "Input polling and typed Action invocation occur on the owning UI thread."
+lifecycle = "Initial configuration is validated at mount; updates preserve the controlled/uncontrolled contract; unmount releases routes."
+error_contract = "InputConfigError rejects unsupported or invalid input before native store access."
+identity_policy = "Automatic identity; repeated fields require a BusinessKey."
+event_model = "Event::Change dispatches Action<String> through InputConfig."
+a11y_metadata = "TextInput maps to text-input semantics with optional name/value/state metadata; password mode exposes a masked a11y value."
+replacement = "No replacement; use synui::widgets::TextInput and InputConfig<String>. Optional TextInput::password(true) masks glyphs via native TextField."
+fixture_commands = ["cargo test -p synui --test counter_prelude_fixture"]
+validation_workloads = ["facade-compilation", "component-interaction", "a11y"]
+boundary_note = "Stable typed input; password masks display/a11y only — State/Action still carry plaintext; legacy TextBinding is a compatibility mapping only."
+
+[[components]]
+id = "text-area"
+canonical_path = "synui::widgets::TextArea"
+type_name = "TextArea"
+prelude = true
+stability = "stable"
+source_paths = ["crates/synui/src/widgets.rs"]
+ownership = "Controlled values and typed change Actions are AppContext-owned; uncontrolled values are native-owned after mount."
+thread_rule = "Input polling and typed Action invocation occur on the owning UI thread."
+lifecycle = "Initial configuration is validated at mount; updates preserve the controlled/uncontrolled contract; unmount releases routes."
+error_contract = "InputConfigError rejects unsupported or invalid input before native store access."
+identity_policy = "Automatic identity; repeated fields require a BusinessKey."
+event_model = "Event::Change dispatches Action<String> through InputConfig."
+a11y_metadata = "TextArea maps to text-input semantics; new(label) sets accessibility name only (native has no placeholder glyph)."
+replacement = "No replacement; use synui::widgets::TextArea and InputConfig<String>. Legacy TextAreaBinding is removed."
+fixture_commands = ["cargo test -p synui --lib facade_text_area_mounts_and_polls_controlled_changes"]
+validation_workloads = ["facade-compilation", "component-interaction", "a11y"]
+boundary_note = "Multiline host; label is a11y name only; OT/HTML remain hard-locked on RichDocument."
+
+[[components]]
+id = "checkbox"
+canonical_path = "synui::widgets::Checkbox"
+type_name = "Checkbox"
+prelude = true
+stability = "stable"
+source_paths = ["crates/synui/src/widgets.rs"]
+ownership = "Controlled State<bool> and Action<bool> belong to AppContext; uncontrolled state is native-owned after mount."
+thread_rule = "Change dispatch is restricted to the owning UI thread."
+lifecycle = "Configuration validates at mount, updates preserve input mode, and unmount removes the typed route."
+error_contract = "InputConfigError and ElementError report invalid configuration or lifecycle failures."
+identity_policy = "Automatic identity; repeated controls use BusinessKey."
+event_model = "Event::Change dispatches a typed boolean Action."
+a11y_metadata = "Checkbox maps to role=checkbox and checked/disabled state metadata."
+replacement = "No replacement; use synui::widgets::Checkbox and InputConfig<bool>."
+fixture_commands = ["cargo test -p synui --test counter_prelude_fixture"]
+validation_workloads = ["facade-compilation", "component-interaction", "a11y"]
+boundary_note = "Stable typed input; legacy BoolBinding is not re-exported."
+
+[[components]]
+id = "switch"
+canonical_path = "synui::widgets::Switch"
+type_name = "Switch"
+prelude = true
+stability = "stable"
+source_paths = ["crates/synui/src/widgets.rs"]
+ownership = "Controlled State<bool> and Action<bool> belong to AppContext; uncontrolled state is native-owned after mount."
+thread_rule = "Change dispatch is restricted to the owning UI thread."
+lifecycle = "Configuration validates at mount, updates preserve input mode, and unmount removes the typed route."
+error_contract = "InputConfigError and ElementError report invalid configuration or lifecycle failures."
+identity_policy = "Automatic identity; repeated controls use BusinessKey."
+event_model = "Event::Change dispatches a typed boolean Action."
+a11y_metadata = "Switch maps to role=switch and checked/disabled state metadata; must not degrade to Checkbox."
+replacement = "No replacement; use synui::widgets::Switch and InputConfig<bool>."
+fixture_commands = ["cargo test -p synui --lib view::tests::facade_switch_radio_and_linear_progress_mount_native_hosts"]
+validation_workloads = ["facade-compilation", "component-interaction", "a11y"]
+boundary_note = "Stable typed toggle; distinct kind from Checkbox."
+
+[[components]]
+id = "radio"
+canonical_path = "synui::widgets::Radio"
+type_name = "Radio"
+prelude = true
+stability = "stable"
+source_paths = ["crates/synui/src/widgets.rs"]
+ownership = "Label is Element-owned; controlled State<bool>/Action<bool> belong to AppContext."
+thread_rule = "Change dispatch is restricted to the owning UI thread."
+lifecycle = "Configuration validates at mount; controlled updates sync selected; unmount removes the typed route."
+error_contract = "InputConfigError and ElementError report invalid configuration or lifecycle failures."
+identity_policy = "Automatic identity; repeated controls use BusinessKey."
+event_model = "Event::Change dispatches a typed boolean Action."
+a11y_metadata = "Radio uses checkbox-equivalent checked metadata until a dedicated Radio role exists."
+replacement = "No replacement; use synui::widgets::Radio and InputConfig<bool>."
+fixture_commands = ["cargo test -p synui --lib view::tests::facade_switch_radio_and_linear_progress_mount_native_hosts"]
+validation_workloads = ["facade-compilation", "component-interaction", "a11y"]
+boundary_note = "Stable single-select radio; grouping is application-composed."
+
+[[components]]
+id = "linear-progress"
+canonical_path = "synui::widgets::LinearProgress"
+type_name = "LinearProgress"
+prelude = true
+stability = "stable"
+source_paths = ["crates/synui/src/widgets.rs"]
+ownership = "Value and indeterminate flags are Element-owned properties."
+thread_rule = "Mount/update run on the owning UI thread."
+lifecycle = "Properties sync at mount/update; no InputConfig."
+error_contract = "ElementError on lifecycle failures."
+identity_policy = "Automatic identity."
+event_model = "Display-only; no Change Action."
+a11y_metadata = "Maps to role=progress-bar with percent value metadata."
+replacement = "No replacement; use synui::widgets::LinearProgress."
+fixture_commands = ["cargo test -p synui --lib view::tests::facade_switch_radio_and_linear_progress_mount_native_hosts"]
+validation_workloads = ["facade-compilation", "a11y"]
+boundary_note = "Stable linear progress; CircularProgress is also prelude (Phase 54)."
+
+[[components]]
+id = "circular-progress"
+canonical_path = "synui::widgets::CircularProgress"
+type_name = "CircularProgress"
+prelude = true
+stability = "stable"
+source_paths = ["crates/synui/src/widgets.rs"]
+ownership = "Value and indeterminate flags are Element-owned properties."
+thread_rule = "Mount/update run on the owning UI thread."
+lifecycle = "Properties sync at mount/update; no InputConfig."
+error_contract = "ElementError on lifecycle failures."
+identity_policy = "Automatic identity."
+event_model = "Display-only; no Change Action."
+a11y_metadata = "Maps to role=progress-bar with percent value metadata."
+replacement = "No replacement; use synui::widgets::CircularProgress. Native paint is indeterminate-oriented."
+fixture_commands = ["cargo test -p synui --lib view::tests::facade_card_list_item_and_circular_progress_mount_native_hosts"]
+validation_workloads = ["facade-compilation", "a11y"]
+boundary_note = "Stable circular progress; determinate arc paint may deepen later."
+
+[[components]]
+id = "card"
+canonical_path = "synui::widgets::Card"
+type_name = "Card"
+prelude = true
+stability = "stable"
+source_paths = ["crates/synui/src/widgets.rs", "crates/synui/src/view.rs"]
+ownership = "Elevation and children Nodes are Element-owned."
+thread_rule = "Mount/update run on the owning UI thread."
+lifecycle = "EngineAdapter mounts Card; children sync via replace_children."
+error_contract = "ElementError for lifecycle failures."
+identity_policy = "Automatic identity for the card host."
+event_model = "No Change Action; children carry their own events."
+a11y_metadata = "Generic host labeled Card."
+replacement = "No replacement; use synui::widgets::Card from prelude."
+fixture_commands = ["cargo test -p synui --lib view::tests::facade_card_list_item_and_circular_progress_mount_native_hosts"]
+validation_workloads = ["facade-compilation", "a11y"]
+boundary_note = "Phase 54 Wave M: elevated surface container."
+
+[[components]]
+id = "list-item"
+canonical_path = "synui::widgets::ListItem"
+type_name = "ListItem"
+prelude = true
+stability = "stable"
+source_paths = ["crates/synui/src/widgets.rs", "crates/synui/src/view.rs"]
+ownership = "Title/subtitle/trailing are Element-owned; press Action is AppContext-owned."
+thread_rule = "Press Action and lifecycle are UI-thread callbacks."
+lifecycle = "EngineAdapter mounts ListItem; trailing children sync via replace_children."
+error_contract = "ElementError for lifecycle failures."
+identity_policy = "Automatic identity for the row host."
+event_model = "Action<()> for on_press via Event::Press."
+a11y_metadata = "ListItem role with title name and optional Click action."
+replacement = "No replacement; use synui::widgets::ListItem from prelude."
+fixture_commands = ["cargo test -p synui --lib view::tests::facade_card_list_item_and_circular_progress_mount_native_hosts"]
+validation_workloads = ["facade-compilation", "component-interaction", "a11y"]
+boundary_note = "Phase 54 Wave M: list row with typed press Action (not ActionId)."
+
+[[components]]
+id = "number-input"
+canonical_path = "synui::widgets::NumberInput"
+type_name = "NumberInput"
+prelude = true
+stability = "stable"
+source_paths = ["crates/synui/src/widgets.rs"]
+ownership = "Range and State<f64>/Action<f64> are application configuration owned by AppContext."
+thread_rule = "Value changes and range validation run on the owning UI thread."
+lifecycle = "Range and input mode are validated at mount/update; unmount releases typed routes."
+error_contract = "InputConfigError::OutOfRange and ElementError reject invalid values without partial native mutation."
+identity_policy = "Automatic identity; repeated numeric inputs use BusinessKey."
+event_model = "Event::Change dispatches a typed numeric Action."
+a11y_metadata = "NumberInput maps to slider/value semantics with optional range metadata."
+replacement = "No replacement; use synui::widgets::NumberInput and InputConfig<f64>."
+fixture_commands = ["cargo test -p synui --test counter_prelude_fixture"]
+validation_workloads = ["facade-compilation", "component-interaction", "a11y"]
+boundary_note = "Stable numeric input descriptor; numeric action identifiers remain denied."
+
+[[components]]
+id = "select"
+canonical_path = "synui::widgets::Select"
+type_name = "Select"
+prelude = true
+stability = "stable"
+source_paths = ["crates/synui/src/widgets.rs"]
+ownership = "Choices are application data; selected ChoiceId and typed Action are AppContext-owned when controlled."
+thread_rule = "Choice changes dispatch on the owning UI thread."
+lifecycle = "Choices and selection are validated at mount/update; unmount removes typed routes."
+error_contract = "InputConfigError::InvalidChoice rejects an out-of-range selection."
+identity_policy = "Automatic identity; repeated Select controls use BusinessKey."
+event_model = "Event::Change dispatches Action<ChoiceId>; selection is not a global registry."
+a11y_metadata = "Select exposes choice/value semantics through the Element accessibility contract."
+replacement = "No replacement; use synui::widgets::Select and ChoiceId."
+fixture_commands = ["cargo test -p synui --test counter_prelude_fixture"]
+validation_workloads = ["facade-compilation", "component-interaction", "a11y"]
+boundary_note = "Stable choice input; legacy SelectionBinding is mapped to Model/InputConfig in compatibility metadata."
+
+[[components]]
+id = "list-virtual-list"
+canonical_path = "synui::widgets::VirtualList"
+type_name = "VirtualList"
+prelude = true
+stability = "stable"
+source_paths = ["crates/synui/src/widgets.rs", "crates/synui/src/view.rs"]
+ownership = "Row count and label factory are Element-owned; selection/activate Actions are AppContext-owned."
+thread_rule = "Select/activate Actions and Element lifecycle are UI-thread gated by AppContext."
+lifecycle = "EngineAdapter mounts ListView; sync_virtual_mounts keeps the viewport window bounded."
+error_contract = "ElementError is returned; no WidgetStore downcast is permitted in application code."
+identity_policy = "Automatic identity for the list host; row content is viewport-mounted, not one Element per row."
+event_model = "Typed Action<usize> for on_select / on_activate; Action<(usize,f64,f64)> for on_context."
+a11y_metadata = "List role and logical row_count are exposed without O(rows) Element nodes."
+replacement = "No replacement; use synui::widgets::VirtualList from prelude."
+fixture_commands = ["cargo test -p synui --lib view::tests::facade_scroll_and_virtual_list_mount_native_hosts"]
+validation_workloads = ["facade-compilation", "virtual-data", "headless-render", "a11y"]
+boundary_note = "Phase 43 Wave A: fixed-extent VirtualList MVP; Phase 46 adds on_context + in-app MenuBar/ContextMenu."
+
+[[components]]
+id = "tree"
+canonical_path = "synui::widgets::VirtualTree"
+type_name = "VirtualTree"
+prelude = true
+stability = "stable"
+source_paths = ["crates/synui/src/widgets.rs", "crates/synui/src/view.rs"]
+ownership = "Root TreeNode list and expand/select/activate Actions are AppContext-owned."
+thread_rule = "Expand/select/activate Actions and Element lifecycle are UI-thread gated by AppContext."
+lifecycle = "EngineAdapter mounts TreeView; paint-path labels keep the virtual window bounded."
+error_contract = "ElementError is returned; no WidgetStore downcast is permitted in application code."
+identity_policy = "Automatic identity for the tree host; node ids are application strings, not one Element per node."
+event_model = "Typed Action<String> for on_expand / on_select / on_activate."
+a11y_metadata = "Tree role and logical row_count are exposed without O(nodes) Element nodes."
+replacement = "No replacement; use synui::widgets::VirtualTree from prelude."
+fixture_commands = ["cargo check -p tree_list_demo"]
+validation_workloads = ["facade-compilation", "virtual-data", "a11y"]
+boundary_note = "Phase 44 Wave B: VirtualTree MVP; Phase 46 restores sibling MenuBar/ContextMenu in tree_list_demo."
+
+[[components]]
+id = "data-table"
+canonical_path = "synui::widgets::DataTable"
+type_name = "DataTable"
+prelude = true
+stability = "stable"
+source_paths = ["crates/synui/src/widgets.rs", "crates/synui/src/view.rs", "crates/synui/src/model.rs"]
+ownership = "Columns, cell factory, filter query, selection/edit/sort Actions are AppContext-owned."
+thread_rule = "Select/sort/edit Actions and virtual mount sync run on the owning UI thread."
+lifecycle = "EngineAdapter mounts native DataTable; sync_virtual_mounts keeps the cell window bounded."
+error_contract = "ElementError / VirtualModelError reject invalid ranges before Engine access."
+identity_policy = "Cell and row identities use logical coordinates/BusinessKey, never materialized positional keys."
+event_model = "SelectionChange, SortDescriptor, and typed edit Action<(usize,usize,String)> carry interaction."
+a11y_metadata = "Grid role and logical/mounted row/column metadata are exposed by DataTable."
+replacement = "No replacement; use synui::widgets::DataTable (runtime host) with optional VirtualDataTableModel."
+fixture_commands = ["cargo test -p synui --lib view::tests::facade_data_table_mounts_native_host_with_bounded_cells", "cargo test -p synui --lib model::tests::hundred_thousand_rows_request_only_viewport_and_prefetch"]
+validation_workloads = ["facade-compilation", "component-interaction", "virtual-data", "headless-render", "a11y"]
+boundary_note = "Phase 44 Wave B: runtime DataTable host; client substring filter; no server pivot/regex."
+
+[[components]]
+id = "split-pane"
+canonical_path = "synui::widgets::SplitPane"
+type_name = "SplitPane"
+prelude = true
+stability = "stable"
+source_paths = ["crates/synui/src/widgets.rs", "crates/synui/src/view.rs"]
+ownership = "Primary/secondary Nodes and optional ratio Action are AppContext-owned."
+thread_rule = "Ratio Action and Element lifecycle are UI-thread callbacks."
+lifecycle = "EngineAdapter mounts SplitPane; children reconcile through ordinary Element identity."
+error_contract = "ElementError for lifecycle failures; floating dock is not supported."
+identity_policy = "Automatic identity; repeated split trees use BusinessKey."
+event_model = "Optional Action<f64> for on_ratio; fixed two-pane nested split only."
+a11y_metadata = "Generic host semantics; pane children declare their own labels."
+replacement = "No replacement; use synui::widgets::SplitPane from prelude."
+fixture_commands = ["cargo check -p data_browser_demo"]
+validation_workloads = ["facade-compilation", "component-interaction", "a11y"]
+boundary_note = "Phase 44 Wave B: fixed nested SplitPane; floating dock remains Phase 45+."
+
+[[components]]
+id = "tab-bar"
+canonical_path = "synui::widgets::TabBar"
+type_name = "TabBar"
+prelude = true
+stability = "stable"
+source_paths = ["crates/synui/src/widgets.rs", "crates/synui/src/view.rs"]
+ownership = "Labels and selected index State/Action are AppContext-owned; pane content is application-composed."
+thread_rule = "Tab change Action and Element lifecycle are UI-thread callbacks."
+lifecycle = "EngineAdapter mounts TabBar; application switches pane Nodes (MVP; no dual-pane keep-alive engine)."
+error_contract = "ElementError for lifecycle failures."
+identity_policy = "Automatic identity for the tab host."
+event_model = "Action<usize> for on_change; selected State is controlled when supplied."
+a11y_metadata = "Tab/selected-pane semantics via host selection index."
+replacement = "No replacement; use synui::widgets::TabBar from prelude."
+fixture_commands = ["cargo check -p data_browser_demo"]
+validation_workloads = ["facade-compilation", "component-interaction", "a11y"]
+boundary_note = "Phase 44 Wave B: TabBar selection MVP; pane keep-alive is application-composed."
+
+[[components]]
+id = "rich-text"
+canonical_path = "synui::widgets::RichDocument"
+type_name = "RichDocument"
+prelude = true
+stability = "stable"
+source_paths = ["crates/synui/src/widgets.rs", "crates/synui/src/view.rs", "crates/synui-core/src/block_doc.rs"]
+ownership = "BlockDoc and on_change Action are AppContext-owned; host owns edit buffer while focused."
+thread_rule = "Document Actions and Element lifecycle are UI-thread callbacks."
+lifecycle = "EngineAdapter mounts RichEdit; poll commits edit buffer and dispatches on_change when doc changes."
+error_contract = "ElementError for lifecycle failures; no WidgetStore downcast in application code."
+identity_policy = "Automatic identity for the editor host; BlockDoc is value-owned state."
+event_model = "Action<BlockDoc> for on_change; shortcuts B/I/U/Z are host-owned."
+a11y_metadata = "TextInput role with plain-text value metadata."
+replacement = "No replacement; use synui::widgets::RichDocument from prelude."
+fixture_commands = ["cargo test -p synui --lib view::tests::facade_rich_document_mounts_native_richedit_host", "cargo check -p rich_edit_demo"]
+validation_workloads = ["facade-compilation", "rich-text-style", "headless-render", "a11y"]
+boundary_note = "Phase 45 Wave C: RichDocument MVP; OT/HTML/nested tables remain hard-locked."
+
+[[components]]
+id = "app-bar"
+canonical_path = "synui::widgets::AppBar"
+type_name = "AppBar"
+prelude = true
+stability = "stable"
+source_paths = ["crates/synui/src/widgets.rs", "crates/synui/src/view.rs"]
+ownership = "Title and trailing Nodes are application-composed."
+thread_rule = "Element lifecycle is UI-thread only."
+lifecycle = "EngineAdapter mounts AppBar; trailing children reconcile through Element identity."
+error_contract = "ElementError for lifecycle failures."
+identity_policy = "Automatic identity; repeated bars use BusinessKey."
+event_model = "Trailing children own their Actions."
+a11y_metadata = "Generic host labeled by title."
+replacement = "No replacement; use synui::widgets::AppBar from prelude."
+fixture_commands = ["cargo check -p navigation_demo"]
+validation_workloads = ["facade-compilation", "component-interaction", "a11y"]
+boundary_note = "Phase 45 Wave C: AppBar chrome MVP."
+
+[[components]]
+id = "navigation-drawer"
+canonical_path = "synui::widgets::NavigationDrawer"
+type_name = "NavigationDrawer"
+prelude = true
+stability = "stable"
+source_paths = ["crates/synui/src/widgets.rs", "crates/synui/src/view.rs"]
+ownership = "Open flag and content Nodes are AppContext-owned."
+thread_rule = "Open-change Action and lifecycle are UI-thread callbacks."
+lifecycle = "EngineAdapter mounts NavigationDrawer; children sync when open."
+error_contract = "ElementError for lifecycle failures."
+identity_policy = "Automatic identity for the drawer host."
+event_model = "Action<bool> for on_open_change."
+a11y_metadata = "Generic host semantics; children declare labels."
+replacement = "No replacement; use synui::widgets::NavigationDrawer from prelude."
+fixture_commands = ["cargo check -p navigation_demo"]
+validation_workloads = ["facade-compilation", "component-interaction", "a11y"]
+boundary_note = "Phase 45 Wave C: fixed drawer; floating dock remains Phase 46+."
+
+[[components]]
+id = "bottom-navigation"
+canonical_path = "synui::widgets::BottomNavigation"
+type_name = "BottomNavigation"
+prelude = true
+stability = "stable"
+source_paths = ["crates/synui/src/widgets.rs", "crates/synui/src/view.rs"]
+ownership = "Labels and selected index Action are AppContext-owned."
+thread_rule = "Selection Action and lifecycle are UI-thread callbacks."
+lifecycle = "EngineAdapter mounts BottomNavigation; selection polled each frame."
+error_contract = "ElementError for lifecycle failures."
+identity_policy = "Automatic identity for the nav host."
+event_model = "Action<usize> for on_change."
+a11y_metadata = "Tab role for selected destination."
+replacement = "No replacement; use synui::widgets::BottomNavigation from prelude."
+fixture_commands = ["cargo check -p navigation_demo"]
+validation_workloads = ["facade-compilation", "component-interaction", "a11y"]
+boundary_note = "Phase 45 Wave C: BottomNavigation MVP."
+
+[[components]]
+id = "dialog"
+canonical_path = "synui::widgets::Dialog"
+type_name = "Dialog"
+prelude = true
+stability = "stable"
+source_paths = ["crates/synui/src/widgets.rs", "crates/synui/src/view.rs"]
+ownership = "Open flag, title, children, and dismiss Action are AppContext-owned."
+thread_rule = "Dismiss Action and lifecycle are UI-thread callbacks."
+lifecycle = "EngineAdapter mounts Dialog; children visible when open."
+error_contract = "ElementError for lifecycle failures."
+identity_policy = "Automatic identity for the dialog host."
+event_model = "Action<()> for on_dismiss when open transitions true→false."
+a11y_metadata = "Generic host labeled by title."
+replacement = "No replacement; use synui::widgets::Dialog from prelude."
+fixture_commands = ["cargo check -p navigation_demo"]
+validation_workloads = ["facade-compilation", "component-interaction", "a11y"]
+boundary_note = "Phase 45 Wave C: Dialog overlay MVP."
+
+[[components]]
+id = "bottom-sheet"
+canonical_path = "synui::widgets::BottomSheet"
+type_name = "BottomSheet"
+prelude = true
+stability = "stable"
+source_paths = ["crates/synui/src/widgets.rs", "crates/synui/src/view.rs"]
+ownership = "Open flag, children, and dismiss Action are AppContext-owned."
+thread_rule = "Dismiss Action and lifecycle are UI-thread callbacks."
+lifecycle = "EngineAdapter mounts BottomSheet; children visible when open."
+error_contract = "ElementError for lifecycle failures."
+identity_policy = "Automatic identity for the sheet host."
+event_model = "Action<()> for on_dismiss when open transitions true→false."
+a11y_metadata = "Generic host semantics."
+replacement = "No replacement; use synui::widgets::BottomSheet from prelude."
+fixture_commands = ["cargo check -p navigation_demo"]
+validation_workloads = ["facade-compilation", "component-interaction", "a11y"]
+boundary_note = "Phase 45 Wave C: BottomSheet overlay MVP."
+
+[[components]]
+id = "snack-bar"
+canonical_path = "synui::widgets::SnackBar"
+type_name = "SnackBar"
+prelude = true
+stability = "stable"
+source_paths = ["crates/synui/src/widgets.rs", "crates/synui/src/view.rs"]
+ownership = "Message, visible flag, and dismiss Action are AppContext-owned."
+thread_rule = "Dismiss Action and lifecycle are UI-thread callbacks."
+lifecycle = "EngineAdapter mounts SnackBar; host may auto-hide and poll dismiss."
+error_contract = "ElementError for lifecycle failures."
+identity_policy = "Automatic identity for the snack host."
+event_model = "Action<()> for on_dismiss when visible transitions true→false."
+a11y_metadata = "Generic host labeled by message."
+replacement = "No replacement; use synui::widgets::SnackBar from prelude."
+fixture_commands = ["cargo check -p navigation_demo"]
+validation_workloads = ["facade-compilation", "component-interaction", "a11y"]
+boundary_note = "Phase 45 Wave C: SnackBar MVP."
+
+[[components]]
+id = "icon"
+canonical_path = "synui::widgets::Icon"
+type_name = "Icon"
+prelude = true
+stability = "stable"
+source_paths = ["crates/synui/src/widgets.rs", "crates/synui/src/view.rs"]
+ownership = "Icon name and size are Element-owned descriptors."
+thread_rule = "Element lifecycle is UI-thread only."
+lifecycle = "EngineAdapter mounts Icon; host IconCache lazy-loads curated material-symbols / aliases, or Window::with_icon preloads."
+error_contract = "ElementError for lifecycle; PlatformError::Icon for with_icon preload failures."
+identity_policy = "Automatic identity."
+event_model = "Non-interactive glyph; tint via style cascade color / theme on_surface."
+a11y_metadata = "Generic host labeled by icon name."
+replacement = "No replacement; use synui::widgets::Icon from prelude (see docs/book/src/icons.md)."
+fixture_commands = ["cargo test -p synui-render --lib icon::tests", "cargo check -p widget_gallery_facade"]
+validation_workloads = ["facade-compilation", "a11y"]
+boundary_note = "Curated Iconify-style Material Symbols + short aliases; custom SVG via Window::with_icon."
+
+[[components]]
+id = "label"
+canonical_path = "synui::widgets::Label"
+type_name = "Label"
+prelude = true
+stability = "stable"
+source_paths = ["crates/synui/src/widgets.rs", "crates/synui/src/view.rs"]
+ownership = "Text, optional truncate/max_lines, and a11y name are Element-owned."
+thread_rule = "Element lifecycle is UI-thread only."
+lifecycle = "EngineAdapter mounts native Label for kind \"label\"; Node::text remains available for plain text."
+error_contract = "ElementError for lifecycle failures."
+identity_policy = "Automatic identity; repeated labels use BusinessKey."
+event_model = "Non-interactive; no event slot."
+a11y_metadata = "role=label; optional Accessibility name override."
+replacement = "No replacement; use synui::widgets::Label or Node::text for plain text."
+fixture_commands = ["cargo test -p synui --lib view::tests::facade_label_mounts_native_label_with_a11y_name"]
+validation_workloads = ["facade-compilation", "headless-render", "a11y"]
+boundary_note = "Phase 48 Wave G: Label Element with optional truncate/a11y; paint-width ellipsis remains host-owned."
+
+[[components]]
+id = "image"
+canonical_path = "synui::widgets::Image"
+type_name = "Image"
+prelude = true
+stability = "stable"
+source_paths = ["crates/synui/src/widgets.rs", "crates/synui/src/view.rs", "crates/synui/src/platform.rs"]
+ownership = "Image cache id is Element-owned; bytes preload via Window::with_image."
+thread_rule = "Element lifecycle is UI-thread only."
+lifecycle = "EngineAdapter mounts Image; host ImageCache supplies raster pixels or crisp SVG."
+error_contract = "PlatformError::Image for preload failures; ElementError for lifecycle."
+identity_policy = "Automatic identity."
+event_model = "Non-interactive Image MVP (pinch remains host-owned). SVG currentColor tints with theme on_surface."
+a11y_metadata = "Generic host labeled by image id."
+replacement = "No replacement; use synui::widgets::Image plus Window::with_image (PNG/JPEG/GIF/WebP or SVG)."
+fixture_commands = ["cargo check -p show_image"]
+validation_workloads = ["facade-compilation", "platform", "a11y"]
+boundary_note = "Phase 45 Wave C Image cache-id MVP; SVG vector paint + currentColor tint for component icons."
+
+[[components]]
+id = "menu-bar"
+canonical_path = "synui::widgets::MenuBar"
+type_name = "MenuBar"
+prelude = true
+stability = "stable"
+source_paths = ["crates/synui/src/widgets.rs", "crates/synui/src/view.rs", "crates/synui-widgets/src/menu.rs"]
+ownership = "Menu/MenuItem models and on_action Action<String> are AppContext-owned."
+thread_rule = "Menu Actions and Element lifecycle are UI-thread callbacks."
+lifecycle = "EngineAdapter mounts MenuBar; MenuPanel::apply_pending + poll dispatches item ids."
+error_contract = "ElementError for lifecycle failures; no WidgetStore downcast in application code."
+identity_policy = "Automatic identity for the menu bar host."
+event_model = "Action<String> item id via on_action; F10/Alt keyboard is host-owned."
+a11y_metadata = "Generic focusable host labeled Menu bar."
+replacement = "No replacement; use synui::widgets::MenuBar from prelude. DesktopMenu/muda is platform shell only."
+fixture_commands = ["cargo test -p synui --lib view::tests::facade_menu_bar_and_context_menu_mount_and_dispatch_actions", "cargo check -p list_demo"]
+validation_workloads = ["facade-compilation", "component-interaction", "a11y"]
+boundary_note = "Phase 46 Wave D: in-app MenuBar; GTK true menus and muda-as-prelude remain hard-locked."
+
+[[components]]
+id = "context-menu"
+canonical_path = "synui::widgets::ContextMenu"
+type_name = "ContextMenu"
+prelude = true
+stability = "stable"
+source_paths = ["crates/synui/src/widgets.rs", "crates/synui/src/view.rs", "crates/synui-widgets/src/menu.rs"]
+ownership = "MenuItem list and on_action Action<String> are AppContext-owned."
+thread_rule = "Menu Actions and Element lifecycle are UI-thread callbacks."
+lifecycle = "EngineAdapter mounts ContextMenu; list secondary-click or show_at opens overlay panel."
+error_contract = "ElementError for lifecycle failures; no WidgetStore downcast in application code."
+identity_policy = "Automatic identity for the context menu host."
+event_model = "Action<String> item id via on_action; VirtualList on_context supplies row/x/y feedback."
+a11y_metadata = "Generic host labeled Context menu."
+replacement = "No replacement; use synui::widgets::ContextMenu from prelude."
+fixture_commands = ["cargo test -p synui --lib view::tests::facade_menu_bar_and_context_menu_mount_and_dispatch_actions", "cargo check -p list_demo"]
+validation_workloads = ["facade-compilation", "component-interaction", "a11y"]
+boundary_note = "Phase 46 Wave D: in-app ContextMenu overlay MVP."
+
+[[components]]
+id = "scroll"
+canonical_path = "synui::widgets::Scroll"
+type_name = "Scroll"
+prelude = true
+stability = "stable"
+source_paths = ["crates/synui/src/widgets.rs", "crates/synui/src/view.rs"]
+ownership = "Child Nodes are application-composed; ScrollView host owns clip/offset; sticky/fixed use widgets::Styled."
+thread_rule = "Scroll events and Element lifecycle are UI-thread callbacks."
+lifecycle = "EngineAdapter mounts ScrollView; children reconcile through ordinary Element identity."
+error_contract = "ElementError / StyleDiagnostic for invalid Styled css; no legacy scroll slot builder is public."
+identity_policy = "Automatic parent identity and BusinessKey for repeated scroll children."
+event_model = "Wheel/chaining remain host-owned; no application scroll Action required for Wave A."
+a11y_metadata = "Generic host semantics; sticky children retain their own labels."
+replacement = "No replacement; use synui::widgets::Scroll (and Styled for sticky/fixed)."
+fixture_commands = ["cargo test -p synui --lib view::tests::facade_scroll_and_virtual_list_mount_native_hosts"]
+validation_workloads = ["facade-compilation", "virtual-data", "headless-render", "a11y"]
+boundary_note = "Phase 43 Wave A: full-mount Scroll; transparent virt of arbitrary flex/grid remains Phase 45+."
+
+[[components]]
+id = "style"
+canonical_path = "synui::style::StyleInput"
+type_name = "StyleInput"
+prelude = true
+stability = "stable"
+source_paths = ["crates/synui/src/style.rs"]
+ownership = "Each Element host owns its StyleCache; application code supplies validated StyleInput."
+thread_rule = "Style application is performed during the Element's UI-thread lifecycle."
+lifecycle = "Validate before commit; invalid updates retain the last successful style; unmount drops the host cache."
+error_contract = "StyleDiagnostic/StyleApplyResult report invalid input without panic or partial style commit."
+identity_policy = "StyleCache belongs to one Element host and is not a global stylesheet."
+event_model = "Style has no input event; visual changes follow Node/Element updates."
+a11y_metadata = "Style does not invent semantic metadata; Element accessibility remains explicit."
+replacement = "No replacement; use synui::style::{Style, StyleInput, StyleCache, StyleDiagnostic}."
+fixture_commands = ["cargo test -p synui --lib style::tests"]
+validation_workloads = ["facade-compilation", "rich-text-style", "headless-render"]
+boundary_note = "Stable non-panicking style contract; style_css/class/theme Engine paths remain denied."
+
+[[components]]
+id = "platform-window"
+canonical_path = "synui::platform::Window"
+type_name = "Window"
+prelude = true
+stability = "stable"
+source_paths = ["crates/synui/src/platform.rs"]
+ownership = "RunLoop owns the native host while AppContext owns application resources."
+thread_rule = "Window and RunLoop execution are native UI-thread operations."
+lifecycle = "Window config is consumed by RunLoop::run; the host mounts, updates, and unmounts the Node root. Optional with_second_window opens an extra native window sharing the same root builder. with_image / with_icon / with_lottie preload into host caches before the event loop."
+error_contract = "PlatformError reports App, Element, Image, Icon, Lottie, or event-loop failures."
+identity_policy = "Window is host configuration; Element identity remains automatic within AppContext."
+event_model = "RunLoop routes native events to typed Element/App handlers."
+a11y_metadata = "Window and child Elements may declare semantic accessibility metadata."
+replacement = "No replacement; use synui::platform::{Window, RunLoop} or App::run."
+fixture_commands = ["cargo test -p synui --test counter_prelude_fixture", "cargo check -p multi_window_demo"]
+validation_workloads = ["facade-compilation", "component-interaction", "headless-render", "a11y", "platform"]
+boundary_note = "Stable desktop facade host; with_second_window / with_image / with_lottie are host config. Tray/DesktopMenu remain non-prelude shell boundaries. Web/mobile host crates remain explicit platform boundaries."
+
+[[components]]
+id = "lottie"
+canonical_path = "synui::widgets::Lottie"
+type_name = "Lottie"
+prelude = true
+stability = "stable"
+source_paths = ["crates/synui/src/widgets.rs", "crates/synui/src/view.rs", "crates/synui/src/platform.rs"]
+ownership = "Asset id or inline JSON plus playing/size are Element-owned; host LottieCache holds preloaded JSON and pre-parsed Composition; each native LottiePlayer clones Composition and is retained after first paint resolve."
+thread_rule = "Mount, update, and animation ticks run on the owning UI thread."
+lifecycle = "from_asset mounts without JSON validation; from_json/new validates at mount (InvalidProperty on failure); id/json change replaces the host; playing/size patch in place; with_lottie parses Composition at preload."
+error_contract = "ElementError::InvalidProperty for malformed inline JSON or missing id/json; PlatformError::Lottie when Window::with_lottie preload/parse fails; missing asset id paints empty (no panic)."
+identity_policy = "Automatic identity; repeated animations use BusinessKey."
+event_model = "Display-only; no application Action. tick_animations advances when playing."
+a11y_metadata = "Generic role with name Animation."
+replacement = "Stable Prelude Element; prefer Lottie::from_asset after Window::with_lottie; from_json/new remain for inline JSON."
+fixture_commands = ["cargo test -p synui --lib facade_lottie_and_morphing_shape_mount_native_hosts"]
+validation_workloads = ["facade-compilation", "headless-render", "platform"]
+boundary_note = "Stable animation host; gallery uses with_lottie + from_asset and playing(true) while the Animation category is mounted (other categories do not force continuous present)."
+
+[[components]]
+id = "morphing-shape"
+canonical_path = "synui::widgets::MorphingShape"
+type_name = "MorphingShape"
+prelude = true
+stability = "stable"
+source_paths = ["crates/synui/src/widgets.rs", "crates/synui/src/view.rs"]
+ownership = "size/playing/speed are Element properties; native morph progress is host-owned."
+thread_rule = "Mount, update, and animation ticks run on the owning UI thread."
+lifecycle = "Mount creates MorphingShape; updates patch size/playing/speed; unmount releases the host."
+error_contract = "ElementError reports mount/update failures."
+identity_policy = "Automatic identity; repeated shapes use BusinessKey."
+event_model = "Display-only; no application Action. tick_animations advances when playing."
+a11y_metadata = "Generic role with name Shape animation."
+replacement = "Stable Prelude Element; MorphingShape::new then size/playing/speed."
+fixture_commands = ["cargo test -p synui --lib facade_lottie_and_morphing_shape_mount_native_hosts"]
+validation_workloads = ["facade-compilation", "headless-render"]
+boundary_note = "Stable morph host; gallery Animation category smoke uses playing(true)."
+
+# Every workspace package below has exactly one record. Dependency names mirror
+# the direct Cargo manifest declarations, while features mirror declared keys.
+[[examples]]
+package = "hello_triangle"
+manifest_path = "examples/hello_triangle/Cargo.toml"
+entry_paths = ["examples/hello_triangle/src/main.rs"]
+dependencies = ["synui-render", "synui-winit", "vello", "kurbo", "peniko", "pollster", "winit"]
+features = []
+dependency_features = ["vello:wgpu", "winit:rwh_06"]
+legacy_entries = []
+components = []
+platforms = ["desktop"]
+classification = "retained_engine"
+behavior_baseline = "GPU triangle creates a native window, surface, scene, resize path, and continuous redraw."
+replacement = "No facade replacement: this is a low-level RenderBackend/winit verification boundary."
+non_equivalent = "Not an application UI example; converting it would remove the render/winit behavior being verified."
+risks = ["Requires GPU and native window availability.", "Depends directly on synui-render and winit rather than synui facade."]
+validation_workloads = ["platform", "headless-render"]
+commands = ["cargo check -p hello_triangle", "cargo run -p hello_triangle"]
+documentation = ["examples/hello_triangle/README.md", "docs/api-reference-v0.2.md", "docs/migration-v0.2.md"]
+status = "inventory"
+
+[[examples]]
+package = "counter"
+manifest_path = "examples/counter/Cargo.toml"
+entry_paths = ["examples/counter/src/main.rs"]
+dependencies = ["synui"]
+features = []
+legacy_entries = []
+components = ["text", "container-row-column", "button"]
+platforms = ["desktop"]
+classification = "migrated"
+behavior_baseline = "App-owned integer state increments through a typed Button Action and renders after update."
+replacement = "Canonical facade path is synui::prelude::{App, State, Action, Node, Button, Window}."
+non_equivalent = "No known non-equivalence; this is the facade-only baseline example."
+risks = ["Native window workload depends on the desktop toolchain; headless fixture remains separate."]
+validation_workloads = ["facade-compilation", "component-interaction", "headless-render", "a11y"]
+commands = ["cargo check -p counter", "cargo test -p synui --test counter_prelude_fixture"]
+documentation = ["docs/api-reference-v0.2.md", "docs/migration-v0.2.md"]
+status = "inventory"
+
+[[examples]]
+package = "todo_list"
+manifest_path = "examples/todo_list/Cargo.toml"
+entry_paths = ["examples/todo_list/src/main.rs"]
+dependencies = ["synui"]
+features = []
+legacy_entries = ["global-signal (RemovedWithSteps)", "TextBinding (DeprecatedWithReplacement)", "FormState (RemovedWithSteps)", "legacy View (DeprecatedWithReplacement)"]
+components = ["text", "container-row-column", "button", "text-input", "scroll"]
+platforms = ["desktop"]
+classification = "migrated"
+behavior_baseline = "Todo rows support add/delete/toggle, required validation, scrolling, and stable item ids."
+replacement = "Implemented with AppContext State/Action, TextInput/InputConfig, Node composition, and prelude Scroll."
+non_equivalent = "FileDialog/menu and legacy form lifecycle are not ordinary-facade contracts; desktop host boundary is explicit."
+risks = ["File-menu import remains an explicit platform/advanced boundary.", "Native window workload depends on the desktop toolchain; headless fixture remains separate."]
+validation_workloads = ["facade-compilation", "component-interaction", "headless-render", "a11y"]
+commands = ["cargo check -p todo_list", "cargo test -p synui --test counter_prelude_fixture"]
+documentation = ["examples/todo_list/README.md", "docs/baselines/todo_list.md", "docs/api-reference-v0.2.md", "docs/migration-v0.2.md"]
+status = "migrated"
+
+[[examples]]
+package = "navigation_demo"
+manifest_path = "examples/navigation_demo/Cargo.toml"
+entry_paths = ["examples/navigation_demo/src/main.rs"]
+dependencies = ["synui"]
+features = []
+legacy_entries = ["Router/Route (RemovedWithSteps)", "global-actions (RemovedWithSteps)", "ViewEngine (RemovedWithSteps)"]
+components = ["text", "container-row-column", "button", "app-bar", "navigation-drawer", "bottom-navigation", "dialog", "menu-bar"]
+platforms = ["desktop", "web"]
+classification = "migrated"
+behavior_baseline = "AppBar + Drawer + BottomNav + Dialog + MenuBar chrome with App-owned routes; platform history boundary remains explicit."
+replacement = "Implemented with prelude AppBar/NavigationDrawer/BottomNavigation/Dialog/MenuBar and typed Actions."
+non_equivalent = "Browser history synchronization is a platform boundary; floating dock remains hard-locked."
+risks = ["History behavior remains host-specific and must be validated independently from facade compilation."]
+validation_workloads = ["facade-compilation", "component-interaction", "headless-render", "a11y", "platform"]
+commands = ["cargo check -p navigation_demo"]
+documentation = ["examples/navigation_demo/README.md", "docs/baselines/navigation_demo.md", "docs/api-reference-v0.2.md", "docs/migration-v0.2.md"]
+status = "migrated"
+
+[[examples]]
+package = "multi_window_demo"
+manifest_path = "examples/multi_window_demo/Cargo.toml"
+entry_paths = ["examples/multi_window_demo/src/main.rs"]
+dependencies = ["synui"]
+features = []
+legacy_entries = ["Application/AppDriver (RemovedWithSteps)", "ViewEngine (RemovedWithSteps)", "global-signal (RemovedWithSteps)"]
+components = ["text", "container-row-column", "button", "label", "platform-window"]
+platforms = ["desktop"]
+classification = "migrated"
+behavior_baseline = "Window::with_second_window opens a second native window; both windows share App-owned State/Action (counter updates visible in either window)."
+replacement = "Implemented with facade App/Window::with_second_window, AppContext-owned State, typed Action, and prelude Label/Button; tray remains an explicit host boundary."
+non_equivalent = "Tray / DesktopMenu remain host-orchestration boundaries and are not prelude Elements."
+risks = ["Native dual-window and tray checks require a desktop environment."]
+validation_workloads = ["facade-compilation", "component-interaction", "headless-render", "platform"]
+commands = ["cargo check -p multi_window_demo", "cargo test -p synui --test counter_prelude_fixture"]
+documentation = ["examples/multi_window_demo/README.md", "docs/baselines/multi_window_demo.md", "docs/api-reference-v0.2.md", "docs/migration-v0.2.md"]
+status = "migrated"
+
+[[examples]]
+package = "show_image"
+manifest_path = "examples/show_image/Cargo.toml"
+entry_paths = ["examples/show_image/src/main.rs"]
+dependencies = ["synui"]
+features = []
+legacy_entries = ["WidgetStore (RemovedWithSteps)", "Application/AppDriver (RemovedWithSteps)", "Engine Image/Flex widgets (RemovedWithSteps)"]
+components = ["text", "container-row-column", "image", "platform-window"]
+platforms = ["desktop"]
+classification = "migrated"
+behavior_baseline = "Loads assets/cat.png through Window::with_image and mounts prelude Image."
+replacement = "Implemented with synui::prelude::{App, Window, Image, Node}."
+non_equivalent = "Pinch zoom / advanced ImageFit remain host-owned."
+risks = ["Requires native window and image asset loading."]
+validation_workloads = ["facade-compilation", "platform", "headless-render"]
+commands = ["cargo check -p show_image"]
+documentation = ["examples/show_image/README.md", "docs/api-reference-v0.2.md", "docs/migration-v0.2.md"]
+status = "migrated"
+
+
+[[examples]]
+package = "widget_gallery_facade"
+manifest_path = "examples/widget_gallery_facade/Cargo.toml"
+entry_paths = ["examples/widget_gallery_facade/src/main.rs"]
+dependencies = ["synui"]
+features = []
+legacy_entries = []
+components = ["text", "container-row-column", "button", "text-input", "checkbox", "number-input", "select", "style", "menu-bar", "context-menu", "list-virtual-list", "tab-bar", "data-table", "tree", "split-pane", "rich-text", "icon", "image", "label", "lottie", "morphing-shape", "app-bar", "dialog", "platform-window"]
+platforms = ["desktop"]
+classification = "migrated"
+behavior_baseline = "Facade gallery smoke covers inputs, Menu/Context, TabBar, VirtualList, VirtualTree, SplitPane, DataTable, RichDocument, Icon, Image (Window::with_image raster + SVG), Label, Lottie (Window::with_lottie + from_asset), MorphingShape, AppBar, Dialog, and StyleDiagnostic retention."
+replacement = "Canonical facade imports are synui::prelude::*; ordinary gallery evidence is widget_gallery_facade only (Phase 52 deleted the Engine gold archive)."
+non_equivalent = "Stable gallery is smoke-only; full interaction demos remain dedicated packages. Engine render/media hooks, plugins, and JSON View are excluded."
+risks = ["Smoke-only for Wave B–G surfaces; full interaction demos remain dedicated packages."]
+validation_workloads = ["facade-compilation", "component-interaction", "rich-text-style", "headless-render", "a11y"]
+commands = ["cargo check -p widget_gallery_facade", "cargo test -p synui --lib view::tests::facade_menu_bar_and_context_menu_mount_and_dispatch_actions", "cargo test -p synui --lib view::tests::facade_label_mounts_native_label_with_a11y_name", "cargo test -p synui --test counter_prelude_fixture", "cargo test -p synui --lib style::tests", "python3 scripts/migration_manifest.py --check"]
+boundary_paths = ["facade-only: examples/widget_gallery_facade/src/main.rs", "excluded: Engine/plugin/JSON paths are not imported or enabled"]
+regression_owner = "facade fixtures plus synui::style::tests"
+documentation = ["examples/widget_gallery_facade/README.md", "docs/gallery_facade_vs_engine.md", "docs/baselines/widget_gallery_facade.md", "docs/api-reference-v0.2.md", "docs/migration-v0.2.md"]
+status = "migrated"
+
+[[examples]]
+package = "mobile_hello"
+manifest_path = "examples/mobile_hello/Cargo.toml"
+entry_paths = ["examples/mobile_hello/src/main.rs"]
+dependencies = ["synui", "synui-winit"]
+features = ["default", "mobile", "web"]
+dependency_features = []
+legacy_entries = ["synui-winit host support (Preserve, platform boundary)"]
+components = ["text", "container-row-column", "button", "platform-window"]
+platforms = ["desktop", "android", "web"]
+classification = "migrated"
+behavior_baseline = "Facade counter launches on desktop and compiles for the declared Android and web host targets; host-specific launch behavior remains outside the UI tree."
+replacement = "Ordinary UI uses synui::prelude::{App, State, Action, Node, Button, Window}; synui-winit remains an explicit feature-selected host support boundary."
+non_equivalent = "Android/web launch, safe-area, and browser history behavior are host responsibilities and are not represented as Prelude components; mobile_hello has no own history or safe-area implementation."
+risks = ["Platform target/toolchain availability varies by environment.", "Native launch behavior is validated separately from facade compilation."]
+validation_workloads = ["facade-compilation", "component-interaction", "headless-render", "a11y", "platform"]
+commands = ["cargo check -p mobile_hello", "cargo check -p mobile_hello --target aarch64-linux-android --features mobile", "cargo check -p mobile_hello --target wasm32-unknown-unknown --features web"]
+target_commands = ["desktop: cargo check -p mobile_hello", "android: cargo check -p mobile_hello --target aarch64-linux-android --features mobile", "web: cargo check -p mobile_hello --target wasm32-unknown-unknown --features web"]
+host_boundary = ["synui-winit feature-selected native/web host support; not a Prelude type"]
+platform_baseline = ["desktop counter window", "Android/web launch delegated to declared host"]
+unavailable_semantics = "Missing target/toolchain is unavailable for this target workload; never passed."
+documentation = ["examples/mobile_hello/README.md", "docs/api-reference-v0.2.md", "docs/migration-v0.2.md"]
+status = "migrated"
+
+
+[[examples]]
+package = "web_hello"
+manifest_path = "examples/web_hello/Cargo.toml"
+entry_paths = ["examples/web_hello/src/lib.rs", "examples/web_hello/src/main.rs"]
+dependencies = ["synui", "synui-core", "synui-platform", "synui-winit", "tracing", "vello", "wasm-bindgen", "web-sys"]
+features = ["default", "web"]
+dependency_features = ["synui-platform:web", "synui-winit:web", "vello:wgpu", "web-sys:console", "web-sys:Window", "web-sys:Document", "web-sys:Element", "web-sys:HtmlElement", "web-sys:Node", "web-sys:EventTarget", "web-sys:MouseEvent"]
+legacy_entries = ["synui-platform/web DomA11y and wasm host glue (Preserve, platform boundary)"]
+components = ["text", "container-row-column", "button", "platform-window"]
+platforms = ["desktop", "web"]
+classification = "retained_engine"
+behavior_baseline = "Facade counter runs natively and in the browser while the explicit DOM accessibility host, canvas/WebGPU path, and browser e2e controls remain available."
+replacement = "Ordinary counter content uses synui facade App/Node/typed Action; retain synui-core/platform/winit, wasm-bindgen, web-sys, and vello only for explicit web host and DomA11y support."
+non_equivalent = "DOM accessibility host, wasm start hook, WebGPU fallback, and browser history/launch behavior are platform-host responsibilities; run_dom_a11y_demo is not Stable Component evidence."
+risks = ["Direct synui-core and platform support dependencies are host-boundary code.", "WebGPU/browser and wasm target availability are environment-dependent."]
+validation_workloads = ["platform", "facade-compilation", "headless-render", "a11y"]
+commands = ["cargo check -p web_hello", "cargo check -p web_hello --target wasm32-unknown-unknown --features web", "./examples/web_hello/build-web.sh", "./examples/web_hello/run-e2e.sh"]
+target_commands = ["desktop: cargo check -p web_hello", "web: cargo check -p web_hello --target wasm32-unknown-unknown --features web", "web package: ./examples/web_hello/build-web.sh", "browser e2e: ./examples/web_hello/run-e2e.sh"]
+host_boundary = ["run_dom_a11y_demo uses synui-core WidgetStore and synui-platform::web::DomA11yTree; wasm-bindgen/web-sys glue remains host-only"]
+platform_baseline = ["native facade counter", "browser wasm launch with DOM a11y fallback and history/launch host behavior"]
+unavailable_semantics = "Missing wasm target, wasm-bindgen CLI, browser, WebGPU, or host toolchain is unavailable for web_hello only; source/behavior failures remain failed."
+documentation = ["examples/web_hello/README.md", "docs/api-reference-v0.2.md", "docs/migration-v0.2.md"]
+status = "retained-boundary"
+
+
+[[examples]]
+package = "synui_plugin_sample"
+manifest_path = "examples/plugin_sample/Cargo.toml"
+entry_paths = ["examples/plugin_sample/src/lib.rs"]
+dependencies = []
+features = []
+legacy_entries = ["synui_plugin_* exports (Preserve, ExperimentalPluginAbi)", "plugin JSON View creation (Preserve, JsonViewCreation)"]
+components = ["text", "container-row-column", "button", "rich-text", "style"]
+platforms = ["desktop"]
+classification = "non_production"
+behavior_baseline = "Standalone cdylib exports plugin version/name/label/style and a JSON view payload without linking SynUI."
+replacement = "No stable component replacement; use typed synui facade components for production and keep this cdylib only for plugin ABI experiments."
+non_equivalent = "Plugin ABI loading and JSON View creation are explicitly non-production and cannot be used as Stable Component evidence."
+risks = ["Exports experimental plugin symbols and JSON payload by design.", "Must remain outside Production ABI and Prelude contracts."]
+validation_workloads = ["plugin-experimental"]
+commands = ["cargo build -p synui_plugin_sample --lib"]
+documentation = ["examples/plugin_sample/README.md", "docs/api-reference-v0.2.md", "docs/migration-v0.2.md"]
+status = "inventory"
+
+[[examples]]
+package = "style_demo"
+manifest_path = "examples/style_demo/Cargo.toml"
+entry_paths = ["examples/style_demo/src/main.rs"]
+dependencies = ["synui"]
+features = []
+legacy_entries = ["run_app/View/style_css (RemovedWithSteps)", "Theme/DesignSystem (RemovedWithSteps)"]
+components = ["text", "container-row-column", "button", "label", "style"]
+platforms = ["desktop"]
+classification = "migrated"
+behavior_baseline = "Prelude Styled MVP shows grid/flex-grow/absolute layouts plus StyleCache invalid-runtime-style diagnostics that retain the last successful style."
+replacement = "Use synui::prelude::{Styled, Label, StyleInput, StyleCache}; Style Cascade v3 remains hard-locked."
+non_equivalent = "Full CSS cascade / Style Cascade v3 is not provided; layout uses the existing CSS subset on Styled."
+risks = ["Invalid style must retain the last successful style and never panic."]
+validation_workloads = ["facade-compilation", "rich-text-style", "headless-render", "a11y"]
+commands = ["cargo check -p style_demo", "cargo test -p synui --lib style::tests", "python3 scripts/migration_manifest.py --check"]
+documentation = ["examples/style_demo/README.md", "docs/baselines/style_demo.md", "docs/api-reference-v0.2.md", "docs/migration-v0.2.md"]
+status = "migrated"
+
+[[examples]]
+package = "rich_edit_demo"
+manifest_path = "examples/rich_edit_demo/Cargo.toml"
+entry_paths = ["examples/rich_edit_demo/src/main.rs"]
+dependencies = ["synui"]
+features = []
+legacy_entries = ["RichBinding/RichEdit (RemovedWithSteps)", "global-signal (RemovedWithSteps)", "ViewEngine (RemovedWithSteps)"]
+components = ["text", "container-row-column", "button", "rich-text"]
+platforms = ["desktop"]
+classification = "migrated"
+behavior_baseline = "Prelude RichDocument editing with B/I/U host shortcuts, Markdown export, and sample load."
+replacement = "Implemented with synui::prelude::{RichDocument, BlockDoc, State, Action}."
+non_equivalent = "OT/HTML/nested tables remain hard-locked."
+risks = ["Focused editor owns the edit buffer until poll commits on_change."]
+validation_workloads = ["facade-compilation", "rich-text-style", "headless-render", "a11y"]
+commands = ["cargo check -p rich_edit_demo", "cargo test -p synui --lib view::tests::facade_rich_document_mounts_native_richedit_host"]
+documentation = ["examples/rich_edit_demo/README.md", "docs/baselines/rich_edit_demo.md", "docs/api-reference-v0.2.md", "docs/migration-v0.2.md"]
+status = "migrated"
+
+[[examples]]
+package = "rich_blocks_demo"
+manifest_path = "examples/rich_blocks_demo/Cargo.toml"
+entry_paths = ["examples/rich_blocks_demo/src/main.rs"]
+dependencies = ["synui"]
+features = []
+legacy_entries = ["RichBinding/RichEdit (RemovedWithSteps)", "global-signal (RemovedWithSteps)", "ViewEngine/WidgetStore (RemovedWithSteps)"]
+components = ["text", "container-row-column", "button", "rich-text"]
+platforms = ["desktop"]
+classification = "migrated"
+behavior_baseline = "RichDocument host edits headings/lists/image slots with Markdown import/export."
+replacement = "Implemented with prelude RichDocument and BlockDoc round-trip."
+non_equivalent = "OT/HTML/nested tables remain hard-locked."
+risks = ["Image block slots are document data; raster decode remains Image Element / Window preload."]
+validation_workloads = ["facade-compilation", "rich-text-style", "headless-render", "a11y"]
+commands = ["cargo check -p rich_blocks_demo"]
+documentation = ["examples/rich_blocks_demo/README.md", "docs/baselines/rich_blocks_demo.md", "docs/api-reference-v0.2.md", "docs/migration-v0.2.md"]
+status = "migrated"
+
+[[examples]]
+package = "list_demo"
+manifest_path = "examples/list_demo/Cargo.toml"
+entry_paths = ["examples/list_demo/src/main.rs"]
+dependencies = ["synui"]
+features = []
+legacy_entries = ["ListView/ViewEngine (RemovedWithSteps)", "SelectionBinding (DeprecatedWithReplacement)", "global-signal (RemovedWithSteps)"]
+components = ["text", "container-row-column", "list-virtual-list", "menu-bar", "context-menu"]
+platforms = ["desktop"]
+classification = "migrated"
+behavior_baseline = "List demo demonstrates 10k-row virtualized scrolling, selection, activate, MenuBar, and ContextMenu."
+replacement = "Implemented with prelude VirtualList / MenuBar / ContextMenu and App-owned Actions."
+non_equivalent = "DesktopMenu/muda is platform shell only; GTK true menus remain hard-locked."
+risks = ["Mount window must stay bounded (≤~40)."]
+validation_workloads = ["facade-compilation", "virtual-data", "headless-render", "a11y", "component-interaction"]
+commands = ["cargo check -p list_demo", "cargo test -p synui --lib view::tests::facade_menu_bar_and_context_menu_mount_and_dispatch_actions"]
+documentation = ["examples/list_demo/README.md", "docs/baselines/list_demo.md", "docs/api-reference-v0.2.md", "docs/migration-v0.2.md"]
+status = "migrated"
+
+[[examples]]
+package = "tree_list_demo"
+manifest_path = "examples/tree_list_demo/Cargo.toml"
+entry_paths = ["examples/tree_list_demo/src/main.rs"]
+dependencies = ["synui"]
+features = []
+legacy_entries = ["TreeView/ListView (RemovedWithSteps)", "TreeSelectionBinding/SelectionBinding (RemovedWithSteps)", "ViewEngine (RemovedWithSteps)"]
+components = ["text", "container-row-column", "tree", "list-virtual-list", "menu-bar", "context-menu"]
+platforms = ["desktop"]
+classification = "migrated"
+behavior_baseline = "Prelude VirtualTree + VirtualList + in-app MenuBar/ContextMenu with Action feedback."
+replacement = "Implemented with prelude VirtualTree / VirtualList / MenuBar / ContextMenu and App-owned Actions."
+non_equivalent = "Tree item mount builder remains paint-path MVP; GTK true menus hard-locked."
+risks = ["Mount window must stay bounded."]
+validation_workloads = ["facade-compilation", "component-interaction", "virtual-data", "headless-render", "a11y"]
+commands = ["cargo check -p tree_list_demo"]
+documentation = ["examples/tree_list_demo/README.md", "docs/baselines/tree_list_demo.md", "docs/api-reference-v0.2.md", "docs/migration-v0.2.md"]
+status = "migrated"
+
+[[examples]]
+package = "table_demo"
+manifest_path = "examples/table_demo/Cargo.toml"
+entry_paths = ["examples/table_demo/src/main.rs"]
+dependencies = ["synui"]
+features = []
+legacy_entries = ["DataTable/ViewEngine (RemovedWithSteps)", "SelectionBinding (DeprecatedWithReplacement)", "global-signal (RemovedWithSteps)"]
+components = ["text", "container-row-column", "data-table", "scroll"]
+platforms = ["desktop"]
+classification = "migrated"
+behavior_baseline = "Prelude DataTable runtime host with virtual scroll, select/sort/edit Actions, and client substring filter."
+replacement = "Implemented with prelude DataTable / TableColumn, App-owned state/actions, and EngineAdapter native mount."
+non_equivalent = "Merge-cell UI and server filter/pivot remain deferred; sticky-header polish is host-owned."
+risks = ["Mount window must stay bounded (≤~40 cells).", "A11y bridge unavailability is unavailable, not passed."]
+validation_workloads = ["facade-compilation", "component-interaction", "virtual-data", "headless-render", "a11y"]
+commands = ["cargo check -p table_demo", "cargo test -p synui --lib view::tests::facade_data_table_mounts_native_host_with_bounded_cells"]
+documentation = ["examples/table_demo/README.md", "docs/baselines/table_demo.md", "docs/api-reference-v0.2.md", "docs/migration-v0.2.md"]
+status = "migrated"
+
+[[examples]]
+package = "data_browser_demo"
+manifest_path = "examples/data_browser_demo/Cargo.toml"
+entry_paths = ["examples/data_browser_demo/src/main.rs"]
+dependencies = ["synui"]
+features = []
+legacy_entries = ["DataTable/ListView/ViewEngine (RemovedWithSteps)", "SelectionBinding (DeprecatedWithReplacement)", "global-signal (RemovedWithSteps)"]
+components = ["text", "container-row-column", "data-table", "tree", "split-pane", "tab-bar", "rich-text", "menu-bar"]
+platforms = ["desktop"]
+classification = "migrated"
+behavior_baseline = "MenuBar + VirtualTree | SplitPane | TabBar(Table|RichDocument Preview) | Detail with client filter."
+replacement = "Implemented with prelude VirtualTree, SplitPane, TabBar, DataTable, RichDocument, MenuBar, and App-owned Actions."
+non_equivalent = "Floating dock remains hard-locked."
+risks = ["Pane keep-alive is application-composed; mount windows must stay bounded."]
+validation_workloads = ["facade-compilation", "component-interaction", "virtual-data", "headless-render", "a11y"]
+commands = ["cargo check -p data_browser_demo"]
+documentation = ["examples/data_browser_demo/README.md", "docs/baselines/data_browser_demo.md", "docs/api-reference-v0.2.md", "docs/migration-v0.2.md"]
+status = "migrated"
+
+[[examples]]
+package = "style_sticky_demo"
+manifest_path = "examples/style_sticky_demo/Cargo.toml"
+entry_paths = ["examples/style_sticky_demo/src/main.rs"]
+dependencies = ["synui"]
+features = []
+legacy_entries = ["style_css/Scroll/ViewEngine (RemovedWithSteps)", "global-signal (RemovedWithSteps)"]
+components = ["text", "container-row-column", "scroll", "style"]
+platforms = ["desktop"]
+classification = "migrated"
+behavior_baseline = "Sticky/fixed/z-index scroll presentation with filler rows and non-panicking style diagnostics."
+replacement = "Use synui::prelude::{Scroll, Styled, Node, Button} plus StyleInput/StyleCache/StyleDiagnostic."
+non_equivalent = "Transparent virt of nested flex/grid and Style Cascade v3 remain Phase 45+."
+risks = ["Invalid runtime style must retain the previous successful style.", "Native window sticky smoke remains a desktop toolchain check."]
+validation_workloads = ["facade-compilation", "rich-text-style", "headless-render", "a11y"]
+commands = ["cargo check -p style_sticky_demo", "cargo test -p synui --lib style::tests", "cargo test -p synui --lib view::tests::facade_scroll_and_virtual_list_mount_native_hosts", "python3 scripts/migration_manifest.py --check"]
+documentation = ["examples/style_sticky_demo/README.md", "docs/baselines/style_sticky_demo.md", "docs/api-reference-v0.2.md", "docs/migration-v0.2.md"]
+status = "migrated"
+
+# Wave 2 fixture ownership is explicit and independent from ABI/Python workloads.
+[[fixtures]]
+id = "counter_prelude_fixture"
+path = "crates/synui/tests/counter_prelude_fixture.rs"
+boundary = "Curated Rust Facade"
+engine_specific = false
+components = ["text", "container-row-column", "button", "text-input", "checkbox", "number-input", "select", "style", "platform-window"]
+workloads = ["facade-compilation", "component-interaction", "headless-render", "a11y"]
+commands = ["cargo test -p synui --test counter_prelude_fixture"]
+failure_attribution = "Only this fixture and its selected facade workloads are blocked; ABI/Python workloads remain independent."
+
+[[fixtures]]
+id = "external_component_fixture"
+path = "crates/synui/tests/external_component_fixture.rs"
+boundary = "Curated Rust Facade"
+engine_specific = false
+components = ["list-virtual-list", "data-table", "rich-text", "style", "platform-window"]
+workloads = ["facade-compilation", "component-interaction", "headless-render", "a11y"]
+commands = ["cargo test -p synui --test external_component_fixture"]
+failure_attribution = "Only this fixture and its selected facade workloads are blocked; ABI/Python workloads remain independent."

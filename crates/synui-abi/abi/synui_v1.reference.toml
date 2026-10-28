@@ -1,0 +1,257 @@
+schema_version = 1
+abi_name = "synui-production"
+abi_major = 1
+abi_minor = 1
+header = "include/synui_v1.h"
+capability_type = "uint64_t"
+status_type = "uint32_t"
+supported_capabilities = ["base", "virtual_model"]
+opaque_handles = [
+    "synui_runtime_t",
+    "synui_app_t",
+    "synui_state_t",
+    "synui_window_t",
+    "synui_element_t",
+    "synui_model_t",
+    "synui_callback_t",
+    "synui_post_token_t",
+]
+exported_symbols = [
+    "synui_abi_query",
+    "synui_runtime_create",
+    "synui_runtime_query",
+    "synui_app_create",
+    "synui_state_i64_create",
+    "synui_state_i64_get",
+    "synui_state_i64_set",
+    "synui_callback_create",
+    "synui_text_element_create",
+    "synui_text_element_set_text",
+    "synui_button_element_create",
+    "synui_app_render",
+    "synui_element_press",
+    "synui_text_element_get_rendered_text",
+    "synui_app_post",
+    "synui_app_drain_posts",
+    "synui_post_token_query",
+    "synui_post_token_cancel",
+    "synui_virtual_data_table_model_create",
+    "synui_virtual_data_table_model_request_visible",
+    "synui_virtual_data_table_model_apply_cell_update",
+    "synui_virtual_data_table_model_notify_sort",
+    "synui_virtual_data_table_model_notify_selection",
+    "synui_runtime_retain",
+    "synui_runtime_release",
+    "synui_app_retain",
+    "synui_app_release",
+    "synui_state_retain",
+    "synui_state_release",
+    "synui_window_retain",
+    "synui_window_release",
+    "synui_element_retain",
+    "synui_element_release",
+    "synui_model_retain",
+    "synui_model_release",
+    "synui_callback_retain",
+    "synui_callback_release",
+    "synui_post_token_retain",
+    "synui_post_token_release",
+    "synui_buffer_free",
+    "synui_error_record_free",
+]
+forbidden_export_families = ["plugin", "json_view", "rust_engine"]
+
+[[capability]]
+name = "base"
+bit = 0
+value = 1
+
+[[capability]]
+name = "virtual_model"
+bit = 1
+value = 2
+
+[validation]
+order = ["out_error", "null", "alignment", "struct_size", "length", "utf8", "output", "handle_type", "handle_generation"]
+text_rule = "NULL is valid exactly when len is zero; non-empty text must be valid UTF-8"
+current_text_inputs = "Text Element create/set and text-valued model cells copy valid UTF-8 before returning"
+side_effect_rule = "all applicable validation completes before resource mutation"
+
+[handle_registry]
+representation = "opaque pointer capability backed by a private allocation; caller values are table keys and are never dereferenced"
+identity = "resource slot plus monotonically advanced generation and internal type tag"
+tombstones = "released token allocations and compact type tombstones remain until library unload so stale raw values cannot alias newly issued leases"
+limitation = "process memory grows with the total number of issued lease tokens; bounded tombstone reclamation requires a future protocol that proves callers no longer retain raw values"
+
+[error_record]
+optional_output = "out_error may be NULL; when non-NULL it must be aligned, writable, and non-overlapping with other outputs"
+success = "owned record with status/code SYNUI_OK and empty message/detail"
+failure = "owned readable UTF-8 record with status/code equal to returned status"
+release = "synui_error_record_free exactly once; NULL is ignored"
+invalid_output = "no record is written when out_error is invalid or overlaps another output"
+
+[buffer]
+producer = "synui_text_element_get_rendered_text"
+contents = "ABI-owned UTF-8 bytes without a trailing NUL"
+output = "out_text is size-initialized and otherwise empty; it remains unchanged on failure"
+release = "pass the returned synui_buffer_t by value to synui_buffer_free exactly once; an empty buffer is valid"
+
+[negotiation]
+entrypoint = "synui_abi_query"
+resource_allocation = "none"
+diagnostic_allocation = "one Error Record when out_error is non-NULL and valid"
+major_rule = "requested major must equal 1"
+minor_rule = "requested minor must be less than or equal to 1"
+capability_rule = "requested bits must be a subset of supported bits"
+failure_output_rule = "out_info remains unchanged; optional out_error receives the failure record"
+
+[runtime]
+creator = "synui_runtime_create"
+query = "synui_runtime_query"
+retain = "synui_runtime_retain creates a distinct caller-owned lease token"
+release = "synui_runtime_release consumes one token; NULL succeeds; repeat is SYNUI_STALE_HANDLE"
+identity = "internal resource slot plus monotonically advanced generation and type tag"
+wrong_type = "SYNUI_INVALID_ARGUMENT without dereferencing the token"
+unknown_or_released = "SYNUI_STALE_HANDLE without dereferencing the token"
+
+[placeholder_ownership]
+handles = ["window"]
+rule = "retain/release validate tokens through the common table; creators are not yet exported"
+
+[virtual_model]
+capability = "virtual_model"
+creator = "synui_virtual_data_table_model_create copies a complete vtable and binds it to the creating App context"
+threading = "create and all model operations require the App UI thread; callbacks execute without registry or Error Record locks"
+ranges = "request_visible uses the public VirtualDataTableAdapter to clip the half-open viewport and explicit prefetch band"
+ownership = "caller owns model lease tokens; Python/user_data must remain valid while any retained lease can invoke callbacks"
+
+[panic_containment]
+entrypoints = "every exported function, including synui_error_record_free and synui_buffer_free, is wrapped in catch_unwind containment"
+primary = "a Rust unwind is mapped to SYNUI_PANIC_CONTAINED and never crosses C"
+secondary = "if Error Record construction or cleanup panics, a process-lifetime preallocated SYNUI_INTERNAL_ERROR record is returned; freeing that shared fallback is a no-op"
+unsupported = "process abort, foreign longjmp, and native abort are not recoverable host behavior"
+
+[app]
+creator = "synui_app_create; the creating thread becomes the App UI thread"
+post = "synui_app_post is thread-safe and copies payload bytes before acceptance"
+drain = "synui_app_drain_posts is UI-thread-only; rejection leaves the queue and out_drained unchanged"
+close = "final App lease release cancels accepted work; final release during callback is rejected with SYNUI_CALLBACK_ERROR"
+
+[post]
+states = ["accepted", "running", "executed", "cancelled", "failed"]
+callback = "called only by drain on the App UI thread, without registry or Error Record locks"
+payload = "copied at submit; callback view is valid only for the callback dynamic extent"
+internal_reference = "the queue owns a reference independent of the caller token"
+callback_result = "SYNUI_OK -> executed; non-OK -> failed/SYNUI_CALLBACK_ERROR; Rust unwind -> failed/SYNUI_PANIC_CONTAINED"
+reentrancy = "post is allowed; synchronous drain and final App release are rejected while a callback is active"
+
+[[status]]
+name = "SYNUI_OK"
+value = 0
+[[status]]
+name = "SYNUI_UNSUPPORTED_ABI"
+value = 1
+[[status]]
+name = "SYNUI_UNSUPPORTED_CAPABILITY"
+value = 2
+[[status]]
+name = "SYNUI_INVALID_ARGUMENT"
+value = 3
+[[status]]
+name = "SYNUI_CONTEXT_MISMATCH"
+value = 4
+[[status]]
+name = "SYNUI_CONTEXT_DESTROYED"
+value = 5
+[[status]]
+name = "SYNUI_STALE_HANDLE"
+value = 6
+[[status]]
+name = "SYNUI_THREAD_AFFINITY"
+value = 7
+[[status]]
+name = "SYNUI_POST_CANCELLED"
+value = 8
+[[status]]
+name = "SYNUI_CALLBACK_ERROR"
+value = 9
+[[status]]
+name = "SYNUI_PANIC_CONTAINED"
+value = 10
+[[status]]
+name = "SYNUI_INTERNAL_ERROR"
+value = 11
+
+
+[[view]]
+name = "synui_text_view_t"
+element = "UTF-8 byte"
+nullability = "ptr may be NULL if and only if len is zero"
+ownership = "borrowed for the duration of the call or synchronous callback"
+termination = "not NUL-terminated"
+
+[[view]]
+name = "synui_bytes_view_t"
+element = "uninterpreted byte"
+nullability = "ptr may be NULL if and only if len is zero"
+ownership = "borrowed for the duration of the call or synchronous callback"
+termination = "not applicable"
+
+[[extensible_struct]]
+name = "synui_abi_info_t"
+first_field = "struct_size"
+[[extensible_struct]]
+name = "synui_runtime_options_t"
+first_field = "struct_size"
+[[extensible_struct]]
+name = "synui_runtime_info_t"
+first_field = "struct_size"
+[[extensible_struct]]
+name = "synui_error_record_t"
+first_field = "struct_size"
+[[extensible_struct]]
+name = "synui_buffer_t"
+first_field = "struct_size"
+[[extensible_struct]]
+name = "synui_callback_payload_t"
+first_field = "struct_size"
+[[extensible_struct]]
+name = "synui_post_t"
+first_field = "struct_size"
+[[extensible_struct]]
+name = "synui_post_token_info_t"
+first_field = "struct_size"
+
+[[extensible_struct]]
+name = "synui_table_dimensions_t"
+first_field = "struct_size"
+[[extensible_struct]]
+name = "synui_cell_range_t"
+first_field = "struct_size"
+[[extensible_struct]]
+name = "synui_cell_request_t"
+first_field = "struct_size"
+[[extensible_struct]]
+name = "synui_cell_coordinate_t"
+first_field = "struct_size"
+[[extensible_struct]]
+name = "synui_cell_value_t"
+first_field = "struct_size"
+[[extensible_struct]]
+name = "synui_sort_descriptor_t"
+first_field = "struct_size"
+[[extensible_struct]]
+name = "synui_prefetch_band_t"
+first_field = "struct_size"
+[[extensible_struct]]
+name = "synui_virtual_data_table_model_vtable_t"
+first_field = "struct_size"
+
+[counter_facade]
+state = "synui_state_i64_create/get/set use Context-owned signed 64-bit State and the App UI-thread gate"
+callback = "synui_callback_create installs an App-owned Action; Python exceptions return SYNUI_CALLBACK_ERROR"
+elements = "Text copies UTF-8 pending values and Button clones a typed Action without exposing Engine or WidgetStore layouts"
+text_update = "synui_text_element_set_text changes pending text; a successful subsequent render commits the rendered snapshot"
+rendered_text = "synui_text_element_get_rendered_text returns an ABI-owned UTF-8 buffer released with synui_buffer_free"
+render = "synui_app_render mounts or updates one retained facade root"
+event = "synui_element_press dispatches the mounted Button route on the App UI thread without registry locks"

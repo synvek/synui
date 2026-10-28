@@ -1,0 +1,6 @@
+---
+source: crates/synui-testing/tests/golden_tests.rs
+expression: dark_png
+extension: png
+snapshot_kind: binary
+---

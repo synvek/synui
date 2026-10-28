@@ -1,0 +1,8 @@
+[package]
+name = "counter"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+synui = { workspace = true }

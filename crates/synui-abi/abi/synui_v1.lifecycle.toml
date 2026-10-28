@@ -1,0 +1,139 @@
+schema_version = 1
+abi_major = 1
+
+[handle_policy]
+representation = "non-dereferenceable unique lease token backed by a private allocation and resolved through an internal table"
+identity = "resource slot, generation, and internal type tag"
+retain = "returns a distinct token owning one additional reference"
+null_release = "SYNUI_OK"
+repeat_release = "SYNUI_STALE_HANDLE"
+wrong_type = "SYNUI_INVALID_ARGUMENT"
+unknown_token = "SYNUI_STALE_HANDLE"
+safety = "validation treats the caller pointer only as a lookup key and never dereferences caller-provided handle memory"
+tombstone_retention = "token allocation and type tombstone remain until library unload, preventing stale pointer reuse"
+limitation = "registry memory is proportional to all lease tokens issued during the process; reclamation is unsafe without a future caller-quiescence protocol"
+
+[[resource]]
+name = "runtime_handle"
+c_type = "synui_runtime_t *"
+creator = "synui_runtime_create"
+owner = "caller receiving each create/retain token"
+retain = "synui_runtime_retain"
+release = "synui_runtime_release"
+validity = "until that token is consumed; resource remains live while any lease exists"
+availability = "implemented: create, retain, release, and query"
+
+[[resource]]
+name = "app_handle"
+c_type = "synui_app_t *"
+creator = "synui_app_create; creator thread is the UI thread"
+owner = "caller receiving each creator/retain token"
+retain = "synui_app_retain"
+release = "synui_app_release"
+validity = "until its lease is consumed; final release closes App and cancels accepted posts"
+availability = "implemented: create, retain/release, cross-thread post, UI-thread drain"
+reentrancy = "post is allowed in callback; synchronous drain and final App release return SYNUI_CALLBACK_ERROR"
+
+[[resource]]
+name = "state_handle"
+c_type = "synui_state_t *"
+creator = "synui_state_i64_create"
+owner = "caller receiving each creator/retain token"
+retain = "synui_state_retain"
+release = "synui_state_release"
+validity = "operations require the creating App Context to remain active"
+availability = "implemented for signed 64-bit State get/set"
+threading = "direct create/get/set require the App UI thread"
+
+[[resource]]
+name = "window_handle"
+c_type = "synui_window_t *"
+creator = "synui_window_create (future)"
+owner = "caller receiving each creator/retain token"
+retain = "synui_window_retain"
+release = "synui_window_release"
+validity = "future creator contract; type/generation ownership API is implemented"
+availability = "safe retain/release placeholder only; no creator exported"
+
+[[resource]]
+name = "element_handle"
+c_type = "synui_element_t *"
+creator = "synui_text_element_create or synui_button_element_create"
+owner = "caller receiving each creator/retain token"
+retain = "synui_element_retain"
+release = "synui_element_release"
+validity = "retained facade node operations require the creating App Context"
+availability = "implemented for copied UTF-8 Text pending/rendered snapshots, Button, render, and press"
+threading = "create, set_text, rendered-text access, render, and press require the App UI thread"
+
+
+[[resource]]
+name = "model_handle"
+c_type = "synui_model_t *"
+creator = "synui_virtual_data_table_model_create"
+owner = "caller receiving each creator/retain token"
+retain = "synui_model_retain"
+release = "synui_model_release"
+validity = "token remains releasable after App close; operations require the creating App context to remain active"
+availability = "implemented for the virtual_model capability: dimensions, bounded cell requests, updates, sort, and selection"
+threading = "creation and operations require the App UI thread"
+callback_lifetime = "vtable is copied; caller-owned user_data must outlive all retained model leases"
+
+[[resource]]
+name = "callback_handle"
+c_type = "synui_callback_t *"
+creator = "synui_callback_create"
+owner = "caller receiving each creator/retain token; created Elements clone the Context Action"
+retain = "synui_callback_retain"
+release = "synui_callback_release"
+validity = "trampoline user_data must outlive every Python callback/Element wrapper that can invoke it"
+availability = "implemented for UI-thread Button action dispatch"
+
+[[resource]]
+name = "post_token_handle"
+c_type = "synui_post_token_t *"
+creator = "synui_app_post"
+owner = "caller owns the returned lease; queue owns a separate internal reference"
+retain = "synui_post_token_retain"
+release = "synui_post_token_release"
+validity = "caller lease until release; queued work remains valid independently until drain/cancel/App close"
+availability = "implemented: accepted/running/executed/cancelled/failed query and accepted-state cancel"
+close_rule = "final App release marks accepted posts cancelled and drops queue references without dereferencing caller tokens"
+
+[[resource]]
+name = "callback_payload"
+c_type = "const synui_callback_payload_t *"
+creator = "synui_app_drain_posts on the App UI thread"
+owner = "SynUI; callback receives a synchronous borrow"
+release = "none"
+validity = "only for the callback dynamic extent; copy views to retain data"
+availability = "implemented for post callback dispatch; callback runs without registry/error locks"
+
+[[resource]]
+name = "error_record"
+c_type = "synui_error_record_t *"
+creator = "each status-returning ABI operation when out_error is non-NULL and valid"
+owner = "caller receiving the record"
+release = "synui_error_record_free"
+validity = "until exactly one matching free; contained views share record lifetime"
+availability = "implemented for successful and failing commands; shared static fallback free is a no-op"
+fallback = "if record construction/cleanup panics, process-lifetime SYNUI_INTERNAL_ERROR storage prevents unwind across C"
+
+[[resource]]
+name = "abi_buffer"
+c_type = "synui_buffer_t"
+creator = "synui_text_element_get_rendered_text"
+owner = "caller receiving a successful returned buffer"
+release = "synui_buffer_free by value exactly once"
+validity = "ptr is valid for len UTF-8 bytes until free; no trailing NUL is promised"
+availability = "implemented for copied rendered Text Element snapshots"
+empty = "ptr NULL, len zero, and capacity zero is a valid owned result and free is a no-op"
+
+[[resource]]
+name = "caller_text_or_byte_view"
+c_type = "synui_text_view_t or synui_bytes_view_t"
+creator = "caller"
+owner = "caller; SynUI receives a borrow"
+release = "caller-defined; never released by SynUI"
+validity = "for the call or synchronous callback accepting it"
+availability = "Text Element create/set and text model cells copy valid UTF-8 synchronously"

@@ -1,0 +1,16 @@
+[package]
+name = "synui-core"
+description = "Core widget traits, events, and focus management for SynUI"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+peniko = { workspace = true }
+thiserror = { workspace = true }
+vello = { workspace = true }
+
+[features]
+default = []
+alloc_counter = []

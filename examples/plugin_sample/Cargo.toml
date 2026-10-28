@@ -1,0 +1,12 @@
+[package]
+name = "synui_plugin_sample"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+name = "synui_plugin_sample"
+
+[dependencies]
+# Minimal ABI — no SynUI link required for the label export.

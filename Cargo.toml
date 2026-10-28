@@ -1,0 +1,101 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/synui-core",
+    "crates/synui-layout",
+    "crates/synui-render",
+    "crates/synui-theme",
+    "crates/synui-i18n",
+    "crates/synui-a11y",
+    "crates/synui-winit",
+    "crates/synui-widgets",
+    "crates/synui",
+    "crates/synui-abi",
+    "crates/synui-testing",
+    "crates/synui-bench",
+    "crates/synui-platform",
+    "crates/synui-hot-view",
+    "examples/hello_triangle",
+    "examples/counter",
+    "examples/todo_list",
+    "examples/navigation_demo",
+    "examples/multi_window_demo",
+    "examples/show_image",
+    "examples/widget_gallery_facade",
+    "examples/mobile_hello",
+    "examples/web_hello",
+    "examples/plugin_sample",
+    "examples/style_demo",
+    "examples/rich_edit_demo",
+    "examples/rich_blocks_demo",
+    "examples/list_demo",
+    "examples/tree_list_demo",
+    "examples/table_demo",
+    "examples/data_browser_demo",
+    "examples/style_sticky_demo",
+]
+default-members = ["examples/hello_triangle"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+rust-version = "1.88"
+
+[workspace.dependencies]
+# Linebender / rendering
+vello = { version = "0.7", default-features = true, features = ["wgpu"] }
+vello_svg = "0.9"
+velato = "0.10"
+kurbo = "0.13"
+peniko = "0.6"
+
+# Window / GPU
+winit = { version = "0.30", default-features = true, features = ["rwh_06"] }
+wgpu = "27"
+pollster = "0.4"
+
+# Layout / text
+taffy = "0.9"
+parley = { version = "0.10", features = ["complex-scripts"] }
+fontique = "0.10"
+
+# Icons / SVG fallback
+iconify = { version = "0.3", features = ["offline"] }
+resvg = "0.45"
+usvg = "0.46"
+
+# MD3 / animation
+polymorpher = { version = "0.1", features = ["kurbo"] }
+
+# i18n / a11y
+fluent-bundle = "0.16"
+fluent-langneg = "0.13"
+unic-langid = "0.9"
+accesskit = "0.24"
+accesskit_winit = "0.32"
+
+# Utilities
+slotmap = "1.0"
+thiserror = "2.0"
+tracing = "0.1"
+tracing-subscriber = "0.3"
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif", "webp"] }
+palette = "0.7"
+arboard = "3"
+
+# Internal crates
+synui-core = { path = "crates/synui-core" }
+synui-layout = { path = "crates/synui-layout" }
+synui-render = { path = "crates/synui-render" }
+synui-theme = { path = "crates/synui-theme" }
+synui-i18n = { path = "crates/synui-i18n" }
+synui-a11y = { path = "crates/synui-a11y" }
+synui-winit = { path = "crates/synui-winit" }
+synui-widgets = { path = "crates/synui-widgets" }
+synui = { path = "crates/synui" }
+synui-testing = { path = "crates/synui-testing" }
+synui-platform = { path = "crates/synui-platform" }
+
+[profile.release]
+lto = "thin"

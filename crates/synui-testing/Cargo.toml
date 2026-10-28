@@ -1,0 +1,23 @@
+[package]
+name = "synui-testing"
+description = "Headless rendering and UI testing utilities for SynUI"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dev-dependencies]
+insta = "1.42"
+proptest = "1.5"
+
+[dependencies]
+synui-core = { workspace = true }
+synui-layout = { workspace = true }
+synui-render = { workspace = true }
+synui-widgets = { workspace = true }
+synui-theme = { workspace = true }
+synui = { workspace = true }
+pollster = { workspace = true }
+vello = { workspace = true }
+vello_hybrid = "0.0.9"
+image = { workspace = true }

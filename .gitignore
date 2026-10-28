@@ -1,0 +1,12 @@
+/target/
+/.idea/
+/.cursor/
+/.kiro/
+/notes/
+/knowledge/
+Cargo.lock
+.DS_Store
+examples/web_hello/www/pkg/
+examples/web_hello/e2e/node_modules/
+examples/web_hello/e2e/test-results/
+examples/web_hello/e2e/playwright-report/

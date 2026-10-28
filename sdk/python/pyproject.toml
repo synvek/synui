@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools==75.8.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "synui-sdk"
+version = "0.1.0"
+description = "ABI-only Python SDK for the SynUI production C interface"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT OR Apache-2.0" }
+dependencies = ["cffi==1.17.1", "pycparser==2.22"]
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]

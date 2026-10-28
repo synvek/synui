@@ -1,0 +1,13 @@
+[package]
+name = "synui-i18n"
+description = "Fluent-based internationalization for SynUI"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+fluent-bundle = { workspace = true }
+fluent-langneg = { workspace = true }
+unic-langid = { workspace = true }
+thiserror = { workspace = true }

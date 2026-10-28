@@ -1,0 +1,14 @@
+[package]
+name = "mobile_hello"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+synui = { workspace = true }
+synui-winit = { workspace = true }
+
+[features]
+default = []
+mobile = ["synui-winit/mobile"]
+web = ["synui-winit/web"]

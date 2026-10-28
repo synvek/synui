@@ -1,0 +1,11 @@
+[package]
+name = "synui_hot_view"
+description = "Sample cdylib for SynUI hot reload (dev only)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]

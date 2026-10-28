@@ -1,0 +1,6 @@
+---
+source: crates/synui-testing/tests/golden_tests.rs
+expression: png
+extension: png
+snapshot_kind: binary
+---

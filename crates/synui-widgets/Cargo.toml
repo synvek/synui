@@ -1,0 +1,26 @@
+[package]
+name = "synui-widgets"
+description = "Material Design 3 widgets for SynUI"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+synui-core = { workspace = true }
+synui-layout = { workspace = true }
+synui-render = { workspace = true }
+synui-theme = { workspace = true }
+synui-i18n = { workspace = true }
+peniko = { workspace = true }
+vello = { workspace = true }
+velato = { workspace = true }
+iconify = { workspace = true }
+taffy = { workspace = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+arboard = { workspace = true }
+
+[features]
+default = ["clipboard"]
+clipboard = []

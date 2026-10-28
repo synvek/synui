@@ -1,0 +1,36 @@
+[package]
+name = "web_hello"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+path = "src/lib.rs"
+
+[[bin]]
+name = "web_hello"
+path = "src/main.rs"
+
+[dependencies]
+synui = { workspace = true }
+synui-core = { workspace = true }
+synui-platform = { workspace = true, features = ["web"] }
+synui-winit = { workspace = true, features = ["web"] }
+tracing = { workspace = true }
+vello = { workspace = true }
+wasm-bindgen = "0.2"
+web-sys = { version = "0.3", features = [
+    "console",
+    "Window",
+    "Document",
+    "Element",
+    "HtmlElement",
+    "Node",
+    "EventTarget",
+    "MouseEvent",
+] }
+
+[features]
+default = ["web"]
+web = []

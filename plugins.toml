@@ -1,0 +1,9 @@
+# SynUI local plugin index (Phase 11).
+# Paths are relative to this file. Prefer a built cdylib:
+#   cargo build -p synui_plugin_sample --lib
+# then point path at target/debug/libsynui_plugin_sample.{dylib,so,dll}
+
+[[plugins]]
+name = "sample_label"
+version = "0.1.0"
+path = "target/debug"
